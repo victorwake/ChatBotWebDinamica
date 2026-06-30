@@ -1,0 +1,147 @@
+export type Patient = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  age: number
+  birthDate: string
+  gender: string
+  bloodType: string
+  address: string
+  insurance: string
+  emergencyContact: string
+  status: "Activo" | "Inactivo"
+  diagnosis: string
+  medications: string
+  allergies: string
+  lastVisit: string
+}
+
+export const mockPatients: Patient[] = [
+  {
+    id: "1",
+    name: "María García",
+    email: "maria@email.com",
+    phone: "+54 11 1234-5678",
+    age: 34,
+    birthDate: "1992-03-15",
+    gender: "Femenino",
+    bloodType: "A+",
+    address: "Av. Corrientes 1234, CABA",
+    insurance: "OSDE 310",
+    emergencyContact: "Carlos García — +54 11 9876-5432",
+    status: "Activo",
+    diagnosis: "Hipertensión arterial",
+    medications: "Enalapril 10mg, Atenolol 50mg",
+    allergies: "Penicilina, Aspirina",
+    lastVisit: "12/06/2026",
+  },
+  {
+    id: "2",
+    name: "Juan Pérez",
+    email: "juan@email.com",
+    phone: "+54 11 2345-6789",
+    age: 45,
+    birthDate: "1981-07-22",
+    gender: "Masculino",
+    bloodType: "O+",
+    address: "Calle 52 N° 789, La Plata",
+    insurance: "Swiss Medical",
+    emergencyContact: "Laura Pérez — +54 11 8765-4321",
+    status: "Activo",
+    diagnosis: "Diabetes tipo 2",
+    medications: "Metformina 850mg, Insulina",
+    allergies: "Ninguna conocida",
+    lastVisit: "05/06/2026",
+  },
+  {
+    id: "3",
+    name: "Ana López",
+    email: "ana@email.com",
+    phone: "+54 11 3456-7890",
+    age: 28,
+    birthDate: "1998-01-10",
+    gender: "Femenino",
+    bloodType: "B-",
+    address: "Av. Rivadavia 5678, CABA",
+    insurance: "Obra Social Provincia",
+    emergencyContact: "Pedro López — +54 11 7654-3210",
+    status: "Inactivo",
+    diagnosis: "Asma bronquial",
+    medications: "Salbutamol inhalador",
+    allergies: "Polen, ácaros, frutos secos",
+    lastVisit: "02/02/2026",
+  },
+  {
+    id: "4",
+    name: "Carlos Fernández",
+    email: "carlos@email.com",
+    phone: "+54 11 4567-8901",
+    age: 52,
+    birthDate: "1974-11-30",
+    gender: "Masculino",
+    bloodType: "AB+",
+    address: "Calle 8 N° 234, Quilmes",
+    insurance: "Medicus",
+    emergencyContact: "Sofía Fernández — +54 11 6543-2109",
+    status: "Activo",
+    diagnosis: "Artritis reumatoide",
+    medications: "Metotrexato, Ibuprofeno 600mg",
+    allergies: "Sulfa",
+    lastVisit: "18/06/2026",
+  },
+  {
+    id: "5",
+    name: "María López",
+    email: "maria.lopez@email.com",
+    phone: "+54 11 5678-9012",
+    age: 29,
+    birthDate: "1997-09-08",
+    gender: "Femenino",
+    bloodType: "O-",
+    address: "Av. Santa Fe 3456, CABA",
+    insurance: "OSDE 210",
+    emergencyContact: "José López — +54 11 5432-1098",
+    status: "Activo",
+    diagnosis: "Migraña crónica",
+    medications: "Sumatriptán 50mg",
+    allergies: "Ibuprofeno",
+    lastVisit: "20/05/2026",
+  },
+  {
+    id: "6",
+    name: "María Rodríguez",
+    email: "maria.rodriguez@email.com",
+    phone: "+54 11 6789-0123",
+    age: 41,
+    birthDate: "1985-02-28",
+    gender: "Femenino",
+    bloodType: "A-",
+    address: "Calle 12 N° 567, Lanús",
+    insurance: "Swiss Medical",
+    emergencyContact: "Pablo Rodríguez — +54 11 4321-0987",
+    status: "Inactivo",
+    diagnosis: "Hipotiroidismo",
+    medications: "Levotiroxina 75mcg",
+    allergies: "Ninguna conocida",
+    lastVisit: "10/01/2026",
+  },
+  {
+    id: "7",
+    name: "Juan Martínez",
+    email: "juan.martinez@email.com",
+    phone: "+54 11 7890-1234",
+    age: 38,
+    birthDate: "1988-06-14",
+    gender: "Masculino",
+    bloodType: "B+",
+    address: "Av. Alem 890, CABA",
+    insurance: "OSDE 410",
+    emergencyContact: "Ana Martínez — +54 11 3210-9876",
+    status: "Activo",
+    diagnosis: "Lumbalgia crónica",
+    medications: "Diclonfenac 50mg, Relajantes musculares",
+    allergies: "Antiinflamatorios no esteroideos",
+    lastVisit: "15/06/2026",
+  },
+]

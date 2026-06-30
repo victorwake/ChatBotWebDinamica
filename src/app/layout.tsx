@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import Chatbot from "@/components/chatbot/Chatbot"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -29,12 +28,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex h-full flex-col">
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex flex-1 flex-col overflow-auto bg-zinc-50">
-            {children}
-          </main>
-          <Chatbot />
-        </div>
+        <main className="flex flex-1 flex-col overflow-auto bg-zinc-50">
+          {children}
+        </main>
       </body>
     </html>
   )

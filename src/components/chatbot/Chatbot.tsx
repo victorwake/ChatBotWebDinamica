@@ -1,12 +1,204 @@
-export default function Chatbot() {
+"use client"
+
+import { useState, useRef, useEffect } from "react"
+import { motion } from "framer-motion"
+import type { Message, Action } from "@/types"
+import type { Patient } from "@/data/mockPatients"
+import { resolveAction, getBotResponse, getDisambiguationMessage } from "@/lib/actionRegistry"
+import type { RegistryAction } from "@/lib/actionRegistry"
+
+const dots = [0, 1, 2]
+
+function renderText(text: string) {
+  const html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\n/g, "<br>")
+  return html
+}
+
+function matchSurname(input: string, patients: Patient[]): Patient | null {
+  const s = input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  for (const p of patients) {
+    const surname = p.name.split(" ").slice(1).join(" ").toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    if (surname.includes(s) || s.includes(surname)) return p
+  }
+  return null
+}
+
+export default function Chatbot({ onAction }: { onAction: (action: Action) => void }) {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([
+    { id: "0", role: "bot", text: "¡Hola! Soy tu asistente médico. ¿En qué puedo ayudarte?" },
+  ])
+  const [input, setInput] = useState("")
+  const [typing, setTyping] = useState(false)
+  const [pendingPatients, setPendingPatients] = useState<Patient[] | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, typing])
+
+  function handleSend() {
+    const text = input.trim()
+    if (!text) return
+    setInput("")
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", text }
+    setMessages((prev) => [...prev, userMsg])
+    setTyping(true)
+
+    setTimeout(() => {
+      if (pendingPatients) {
+        if (/\b(?:cancelar|volver|ninguno|ninguna|no)\b/i.test(text)) {
+          setPendingPatients(null)
+          const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: "Está bien, me decís si querés otra cosa." }
+          setMessages((prev) => [...prev, botMsg])
+          setTyping(false)
+          return
+        }
+
+        const matched = matchSurname(text, pendingPatients)
+        if (matched) {
+          setPendingPatients(null)
+          const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: `Mostrando la ficha de **${matched.name}**.` }
+          setMessages((prev) => [...prev, botMsg])
+          setTyping(false)
+          onAction({ view: "patient_detail", data: { patient: matched } })
+        } else {
+          const surnames = pendingPatients.map((p) => p.name.split(" ").slice(1).join(" "))
+          const botMsg: Message = {
+            id: crypto.randomUUID(), role: "bot",
+            text: `No encontré ese apellido. Los disponibles son: ${surnames.join(", ")}`,
+          }
+          setMessages((prev) => [...prev, botMsg])
+          setTyping(false)
+        }
+        return
+      }
+
+      const action = resolveAction(text) as RegistryAction
+      if (action.pendingPatients) {
+        setPendingPatients(action.pendingPatients)
+        const botMsg: Message = {
+          id: crypto.randomUUID(), role: "bot",
+          text: getDisambiguationMessage(action.pendingPatients),
+        }
+        setMessages((prev) => [...prev, botMsg])
+        setTyping(false)
+        return
+      }
+
+      const botText = getBotResponse(text)
+      const botMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "bot",
+        text: botText,
+      }
+      setMessages((prev) => [...prev, botMsg])
+      setTyping(false)
+      onAction(action)
+    }, 600)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
   return (
-    <aside className="flex h-full w-80 flex-col border-l border-zinc-200 bg-white">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-800">Asistente</h2>
-      </div>
-      <div className="flex flex-1 items-center justify-center text-sm text-zinc-400">
-        Chat placeholder
-      </div>
-    </aside>
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      {open && (
+        <div className="flex h-[32rem] w-[22rem] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+            <span className="text-sm font-semibold text-zinc-800">Asistente</span>
+            <button
+              onClick={() => setOpen(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "self-end rounded-br-md bg-zinc-800 text-white"
+                    : "self-start rounded-bl-md bg-zinc-100 text-zinc-800"
+                }`}
+              >
+                {msg.role === "bot" ? (
+                  <span dangerouslySetInnerHTML={{ __html: renderText(msg.text) }} />
+                ) : (
+                  msg.text
+                )}
+              </div>
+            ))}
+            {typing && (
+              <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-zinc-100 px-4 py-3">
+                {dots.map((i) => (
+                  <motion.span
+                    key={i}
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12, ease: "easeInOut" }}
+                    className="inline-block h-2 w-2 rounded-full bg-zinc-400"
+                  />
+                ))}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div className="border-t border-zinc-100 px-4 py-3">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-zinc-400 disabled:opacity-50"
+                placeholder="Escribí un mensaje..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={typing}
+              />
+              <button
+                onClick={handleSend}
+                disabled={typing}
+                className="rounded-xl bg-zinc-800 px-4 text-sm text-white hover:bg-zinc-700 disabled:opacity-50"
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!open && (
+        <div className="animate-bounce rounded-2xl bg-white px-4 py-2.5 text-sm text-zinc-600 shadow-md">
+          ¿Puedo ayudarte?
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+      >
+        {open ? (
+          <span className="text-lg">✕</span>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        )}
+      </button>
+    </div>
   )
 }
