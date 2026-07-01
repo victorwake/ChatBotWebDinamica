@@ -129,28 +129,32 @@ type Action = { view: ViewType; data?: any }
 
 ---
 
-## Fase 5 — Integración con OpenAI
+## Fase 5 — Integración con Ollama (IA local)
 
-**Objetivo**: Que el chatbot entienda lenguaje natural y devuelva acciones.
+**Objetivo**: Que el chatbot entienda lenguaje natural y devuelva acciones usando IA local.
+
+### Prerrequisito
+
+- Tener [Ollama](https://ollama.com) instalado
+- Modelo descargado: `ollama pull qwen3:8b`
 
 ### Tareas
 
 - [ ] Crear API route en Next.js: `POST /api/chat`
-- [ ] Configurar OpenAI SDK
-- [ ] Definir tools/function calling:
+- [ ] Instalar cliente HTTP (node-fetch o fetch nativo) para comunicarse con Ollama
+- [ ] Configurar conexión a `http://localhost:11434/api/chat`
+- [ ] Enviar mensaje del usuario → Ollama → parsear respuesta → renderizar componente
+- [ ] Definir el system prompt con las tools disponibles (mismo formato function calling):
 
-```json
-{
-  "name": "show_view",
-  "parameters": {
-    "view": "login | patients | patient_detail | appointment",
-    "data": {}
-  }
-}
+```
+Available tools:
+- show_view(view: "login" | "patients" | "patient_detail" | "appointment" | "report", data?: object)
+  Cambia la vista principal del panel.
+- respond(message: string)
+  Responde al usuario en el chat sin cambiar la vista.
 ```
 
-- [ ] Enviar mensaje del usuario → OpenAI → recibe `show_view` → renderiza componente
-- [ ] Agregar contexto: el bot "recuerda" el estado actual
+- [ ] Agregar contexto: el bot recuerda los últimos mensajes
 - [ ] **Checkpoint**: el chatbot entiende frases como "mostrar pacientes de hoy"
 
 ---
@@ -211,12 +215,12 @@ type Action = { view: ViewType; data?: any }
 ## Resumen visual del plan
 
 ```
-Fase 0  ████████████████░░░░░░░░░░░░  Setup
-Fase 1  ████████████████████░░░░░░░░  Chatbot + vistas
-Fase 2  ████████████████████████░░░░  Transiciones
+Fase 0  ████████████████████████████  Setup
+Fase 1  ████████████████████████████  Chatbot + vistas
+Fase 2  ████████████████████████████  Transiciones
 Fase 3  ████████████████████████████  Datos simulados
-Fase 4  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Backend real
-Fase 5  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  OpenAI
+Fase 4  ████████████████████████████  Backend real
+Fase 5  ████████████████████████████  Ollama (IA local)
 Fase 6  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Rive
 Fase 7  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  UX
 Fase 8  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  Producción

@@ -1,5 +1,6 @@
 import type { Action } from "@/types"
 import { mockPatients, type Patient } from "@/data/mockPatients"
+import { fetchPatients } from "./api"
 
 export type RegistryAction = Action & { label: string; pendingPatients?: Patient[] }
 
@@ -16,9 +17,10 @@ const COMMANDS = [
   { cmd: "inicio / volver", desc: "menú principal" },
 ]
 
-const HELP_LABELS = ["ayuda", "opciones", "comandos", "que puedo hacer", "menu", "listame las opciones", "necesito ayuda"]
+export const HELP_LABELS = ["ayuda", "opciones", "comandos", "que puedo hacer", "menu", "listame las opciones", "necesito ayuda"]
 
-const registry: Record<string, (input: string) => RegistryAction | null> = {
+type Handler = (input: string) => RegistryAction | null
+const registry: Record<string, Handler> = {
   login(input) {
     if (/\b(?:login|iniciar\s*s[eé]sion|logue[ea]r(?:me|se|te)?|ingresar|acceder|entrar)\b/i.test(input))
       return { view: "login", label: "Ir al login" }
@@ -26,10 +28,11 @@ const registry: Record<string, (input: string) => RegistryAction | null> = {
   },
   patients(input) {
     if (/\b(?:pacientes\b|lista\s*pacientes\b|ver\s*pacientes\b|todos\s*los\s*pacientes\b)/i.test(input))
-      return { view: "patients", data: { patients: mockPatients }, label: "Lista de pacientes" }
+      return { view: "patients", label: "Lista de pacientes" }
     return null
   },
   patientDetail(input) {
+    const all = mockPatients
     function firstWord(name: string) { return normalizeStr(name).split(" ")[0] }
 
     const extractName = (text: string): string | null => {
@@ -50,20 +53,25 @@ const registry: Record<string, (input: string) => RegistryAction | null> = {
       return null
     }
 
-    let searchTerm = extractName(input)
+    const searchTerm = extractName(input)
     if (searchTerm) {
-      const matches = mockPatients.filter((p) => normalizeStr(p.name).includes(normalizeStr(searchTerm!))
-      )
+      const matches = all.filter((p) => normalizeStr(p.name).includes(normalizeStr(searchTerm)))
       if (matches.length === 1)
         return { view: "patient_detail", data: { patient: matches[0] }, label: `Ficha de ${matches[0].name}` }
       if (matches.length > 1)
         return { view: "patient_detail", label: `Elegí un paciente`, pendingPatients: matches }
     }
 
-    const firstWords = [...new Set(mockPatients.map((p) => firstWord(p.name)))]
+    const normalizedInput = normalizeStr(input)
+    const fullNameMatch = all.find((p) => normalizedInput.includes(normalizeStr(p.name)))
+    if (fullNameMatch) {
+      return { view: "patient_detail", data: { patient: fullNameMatch }, label: `Ficha de ${fullNameMatch.name}` }
+    }
+
+    const firstWords = [...new Set(all.map((p) => firstWord(p.name)))]
     for (const fw of firstWords) {
       if (normalizeStr(input).includes(fw) || fw.includes(normalizeStr(input).split(" ")[0])) {
-        const matches = mockPatients.filter((p) => firstWord(p.name) === fw)
+        const matches = all.filter((p) => firstWord(p.name) === fw)
         if (matches.length === 1)
           return { view: "patient_detail", data: { patient: matches[0] }, label: `Ficha de ${matches[0].name}` }
         if (matches.length > 1)
@@ -90,6 +98,21 @@ const registry: Record<string, (input: string) => RegistryAction | null> = {
   },
 }
 
+export async function resolveActionAsync(input: string): Promise<RegistryAction> {
+  const cleaned = input.replace(/[^\w\sáéíóúüñ]/gi, "").trim()
+  const parsed = new Map(Object.entries(registry).map(([k, h]) => [k, h(cleaned)]))
+
+  for (const [, action] of parsed) {
+    if (action) {
+      if (action.view === "patients") {
+        action.data = { patients: await fetchPatients() }
+      }
+      return action
+    }
+  }
+  return { view: "welcome", label: "No entendí — volviendo al inicio" }
+}
+
 export function getDisambiguationMessage(patients: Patient[]): string {
   const surnames = patients.map((p) => p.name.split(" ").slice(1).join(" "))
   const name = patients[0].name.split(" ")[0]
@@ -108,16 +131,7 @@ export function formatHelp(): string {
   return "📋 **Comandos disponibles**:\n" + items.map((i) => "\n" + i).join("")
 }
 
-export function resolveAction(input: string): RegistryAction {
-  const cleaned = input.replace(/[^\w\sáéíóúüñ]/gi, "").trim()
-  for (const handler of Object.values(registry)) {
-    const result = handler(cleaned)
-    if (result) return result
-  }
-  return { view: "welcome", label: "No entendí — volviendo al inicio" }
-}
-
-export function getBotResponse(input: string): string {
+export function getBotResponse(input: string, resolvedAction?: RegistryAction): string {
   const cleaned = input.replace(/[^\w\sáéíóúüñ]/gi, "").trim()
 
   if (HELP_LABELS.some((w) => cleaned.toLowerCase().includes(w)))
@@ -127,7 +141,6 @@ export function getBotResponse(input: string): string {
   if (/\b(?:gracias|thanks|vale|ok|okey|perfecto|entendido)\b/i.test(cleaned))
     return "¡De nada! Cualquier cosa me decís."
 
-  const resolved = resolveAction(cleaned)
   const actionMap: Record<string, string> = {
     login: "Te llevo al formulario de inicio de sesión.",
     patients: "Acá tenés la lista de pacientes.",
@@ -136,5 +149,14 @@ export function getBotResponse(input: string): string {
     report: "Generando el informe.",
     welcome: "Volviste al inicio.",
   }
-  return actionMap[resolved.view] ?? "No entendí bien. Escribí **ayuda** para ver los comandos."
+  const resolved = resolvedAction ?? registryMatch(cleaned)
+  return actionMap[resolved?.view ?? ""] ?? "No entendí bien. Escribí **ayuda** para ver los comandos."
+}
+
+function registryMatch(input: string): RegistryAction | null {
+  for (const handler of Object.values(registry)) {
+    const result = handler(input)
+    if (result) return result
+  }
+  return null
 }

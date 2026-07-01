@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import type { ViewType } from "@/types"
-import type { RegistryAction } from "@/lib/actionRegistry"
 import WelcomeView from "./WelcomeView"
 import LoginView from "./LoginView"
 import PatientsView from "./PatientsView"
