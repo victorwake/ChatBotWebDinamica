@@ -7,9 +7,15 @@ import type { Patient } from "@/data/mockPatients"
 import { mockPatients } from "@/data/mockPatients"
 import { resolveActionAsync, getBotResponse, getDisambiguationMessage, formatHelp, HELP_LABELS } from "@/lib/actionRegistry"
 import type { RegistryAction } from "@/lib/actionRegistry"
-import { OllamaIcon } from "./OllamaIcon"
 
 const dots = [0, 1, 2]
+
+const SUGGESTIONS = [
+  { label: "Pacientes", text: "mostrame los pacientes" },
+  { label: "Login", text: "login" },
+  { label: "Turno", text: "necesito un turno" },
+  { label: "Informe", text: "reporte" },
+]
 
 function renderText(text: string) {
   const html = text
@@ -38,14 +44,19 @@ function normalizeStr(s: string) {
 
 const VALID_VIEWS: ViewType[] = ["welcome", "login", "patients", "patient_detail", "appointment", "report"]
 
-type OllamaResponse = {
+type LlmResponse = {
   type: "show_view" | "respond"
   view: ViewType | null
   data: Record<string, unknown> | null
   message: string
 }
 
-export default function Chatbot({ onAction }: { onAction: (action: Action) => void }) {
+type ChatbotProps = {
+  onAction: (action: Action) => void
+  onLlmStatusChange?: (usingLlm: boolean) => void
+}
+
+export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     { id: "0", role: "bot", text: "¡Hola! Soy tu asistente médico. ¿En qué puedo ayudarte?" },
@@ -53,10 +64,18 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
   const [input, setInput] = useState("")
   const [typing, setTyping] = useState(false)
   const [pendingPatients, setPendingPatients] = useState<Patient[] | null>(null)
-  const [usingOllama, setUsingOllama] = useState(true)
+  const [usingLlm, setUsingLlm] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([])
+
+  const updateLlmStatus = useCallback(
+    (next: boolean) => {
+      setUsingLlm(next)
+      onLlmStatusChange?.(next)
+    },
+    [onLlmStatusChange],
+  )
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -66,7 +85,7 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
     if (!typing) inputRef.current?.focus()
   }, [typing])
 
-  const processOllama = useCallback(async (text: string): Promise<boolean> => {
+  const processLlm = useCallback(async (text: string): Promise<boolean> => {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -79,7 +98,7 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
 
       if (!response.ok) return false
 
-      const result: OllamaResponse = await response.json()
+      const result: LlmResponse = await response.json()
       historyRef.current.push({ role: "user", content: text })
       historyRef.current.push({ role: "assistant", content: result.message })
 
@@ -175,8 +194,7 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
     }
   }, [onAction])
 
-  async function handleSend() {
-    const text = input.trim()
+  async function sendText(text: string) {
     if (!text) return
     setInput("")
     inputRef.current?.focus()
@@ -215,10 +233,10 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
       return
     }
 
-    if (usingOllama) {
-      const ollamaHandled = await processOllama(text)
-      if (ollamaHandled) return
-      setUsingOllama(false)
+    if (usingLlm) {
+      const llmHandled = await processLlm(text)
+      if (llmHandled) return
+      updateLlmStatus(false)
     }
 
     const action = await resolveActionAsync(text) as RegistryAction
@@ -244,6 +262,10 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
     onAction(action)
   }
 
+  async function handleSend() {
+    await sendText(input.trim())
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -254,33 +276,44 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="flex h-[32rem] w-[22rem] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="flex h-[36rem] w-[24rem] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]"
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-teal-700 to-cyan-700 px-5 py-4 text-white">
+            <div>
+              <p className="text-sm font-semibold">Asistente clínico</p>
+              <p className="text-[11px] text-teal-100">
+                {usingLlm ? "Gemini activo" : "Modo offline — IA no disponible"}
+              </p>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-zinc-800">Asistente</span>
-              {usingOllama && (
-                <span className="flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">
-                  <OllamaIcon className="h-3 w-3" />
+              {usingLlm && (
+                <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-wide">
                   IA
                 </span>
               )}
+              <button
+                onClick={() => setOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-teal-100 hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar chat"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
-            >
-              ✕
-            </button>
           </div>
 
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-slate-50/80 px-4 py-4">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                   msg.role === "user"
-                    ? "self-end rounded-br-md bg-zinc-800 text-white"
-                    : "self-start rounded-bl-md bg-zinc-100 text-zinc-800"
+                    ? "self-end rounded-2xl rounded-br-md bg-teal-700 text-white"
+                    : "self-start rounded-2xl rounded-bl-md border border-slate-100 bg-white text-slate-800"
                 }`}
               >
                 {msg.role === "bot" ? (
@@ -291,13 +324,13 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
               </div>
             ))}
             {typing && (
-              <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md bg-zinc-100 px-4 py-3">
+              <div className="flex items-center gap-1.5 self-start rounded-2xl rounded-bl-md border border-slate-100 bg-white px-4 py-3">
                 {dots.map((i) => (
                   <motion.span
                     key={i}
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12, ease: "easeInOut" }}
-                    className="inline-block h-2 w-2 rounded-full bg-zinc-400"
+                    className="inline-block h-2 w-2 rounded-full bg-teal-400"
                   />
                 ))}
               </div>
@@ -305,11 +338,24 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
             <div ref={bottomRef} />
           </div>
 
-          <div className="border-t border-zinc-100 px-4 py-3">
-            <div className="flex gap-2">
+          <div className="border-t border-slate-100 bg-white px-4 py-3">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {SUGGESTIONS.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  disabled={typing}
+                  onClick={() => sendText(item.text)}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800 disabled:opacity-50"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1.5 focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-100">
               <input
                 ref={inputRef}
-                className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-zinc-400 disabled:opacity-50"
+                className="flex-1 bg-transparent py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-50"
                 placeholder="Escribí un mensaje..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -318,33 +364,39 @@ export default function Chatbot({ onAction }: { onAction: (action: Action) => vo
               />
               <button
                 onClick={handleSend}
-                disabled={typing}
-                className="rounded-xl bg-zinc-800 px-4 text-sm text-white hover:bg-zinc-700 disabled:opacity-50"
+                disabled={typing || !input.trim()}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white transition hover:bg-teal-800 disabled:opacity-40"
+                aria-label="Enviar"
               >
-                Enviar
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
-            {!usingOllama && (
-              <p className="mt-1 text-[10px] text-zinc-400">
-                Modo offline — Ollama no disponible
+            {!usingLlm && (
+              <p className="mt-2 text-[10px] text-slate-400">
+                Modo offline — IA no disponible
               </p>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {!open && (
-        <div className="animate-bounce rounded-2xl bg-white px-4 py-2.5 text-sm text-zinc-600 shadow-md">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 shadow-md">
           ¿Puedo ayudarte?
         </div>
       )}
 
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-lg shadow-teal-700/30 transition-transform hover:scale-105 hover:bg-teal-800 active:scale-95"
+        aria-label={open ? "Cerrar asistente" : "Abrir asistente"}
       >
         {open ? (
-          <span className="text-lg">✕</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         ) : (
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

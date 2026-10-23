@@ -1,10 +1,8 @@
 import type { NextRequest } from "next/server"
+import { completeJson, getLlmConfig, LlmUnavailableError, type LlmMessage } from "@/lib/llm"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
-
-const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434"
-const MODEL = process.env.OLLAMA_MODEL ?? "qwen2.5:1.5b"
 
 const SYSTEM_PROMPT = `Eres un asistente médico de un sistema de gestión de pacientes. Debes responder EXCLUSIVAMENTE con un objeto JSON válido. No agregues texto fuera del JSON.
 
@@ -80,11 +78,6 @@ Usuario: "quien ganó el mundial"
 - Nunca inventes pacientes ni datos médicos
 - Si no estás seguro de la vista, usa type="respond"`
 
-type OllamaMessage = {
-  role: "system" | "user" | "assistant"
-  content: string
-}
-
 type ChatRequest = {
   message: string
   history?: { role: "user" | "assistant"; content: string }[]
@@ -99,70 +92,29 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "message is required" }, { status: 400 })
     }
 
-    const messages: OllamaMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+    if (!getLlmConfig().isConfigured) {
+      return Response.json({ error: "LLM not configured" }, { status: 503 })
+    }
+
+    const messages: LlmMessage[] = [
       ...history.map((h) => ({ role: h.role as "user" | "assistant", content: h.content })),
       { role: "user", content: message },
     ]
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 60000)
+    const parsed = await completeJson({ systemPrompt: SYSTEM_PROMPT, messages })
 
-    try {
-      const response = await fetch(`${OLLAMA_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: MODEL,
-          messages,
-          stream: false,
-          options: {
-            temperature: 0.1,
-            top_p: 0.9,
-          },
-        }),
-        signal: controller.signal,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Ollama error:", response.status, errorText)
-        return Response.json(
-          { error: "Error communicating with Ollama", details: errorText },
-          { status: 502 },
-        )
-      }
-
-      const data = await response.json()
-      const content = data.message?.content ?? ""
-
-      let parsed
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/)
-        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content)
-      } catch {
-        return Response.json({
-          type: "respond",
-          view: null,
-          data: null,
-          message: content,
-        })
-      }
-
-      return Response.json({
-        type: parsed.type ?? "respond",
-        view: parsed.view ?? null,
-        data: parsed.data ?? null,
-        message: parsed.message ?? content,
-      })
-    } finally {
-      clearTimeout(timeout)
-    }
+    return Response.json({
+      type: parsed.type ?? "respond",
+      view: parsed.view ?? null,
+      data: parsed.data ?? null,
+      message: parsed.message ?? "",
+    })
   } catch (error) {
+    if (error instanceof LlmUnavailableError) {
+      console.error("Gemini unavailable:", error.message)
+      return Response.json({ error: "Error communicating with Gemini", details: error.message }, { status: 502 })
+    }
     console.error("Chat API error:", error)
-    return Response.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    )
+    return Response.json({ error: "Internal server error" }, { status: 500 })
   }
 }

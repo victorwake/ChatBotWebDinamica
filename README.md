@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ChatBot Web Dinámica
 
-## Getting Started
+Sistema de gestión médica con chat inteligente (Gemini + fallback por keywords) y panel de vistas.
 
-First, run the development server:
+## Requisitos
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20+
+- Una API key de [Google AI Studio](https://aistudio.google.com/) (opcional, para modo IA)
+
+## Instalación
+
+```powershell
+# Dependencias del frontend (Next.js)
+npm install
+
+# Dependencias del backend (Express)
+cd server && npm install && cd ..
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Modelo de IA (opcional)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copiá [`.env.example`](.env.example) a `.env.local` y completá la key:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+LLM_API_KEY=
+LLM_MODEL=gemini-2.0-flash
+LLM_TIMEOUT_SECONDS=30
+```
 
-## Learn More
+La key es solo de servidor: no uses `NEXT_PUBLIC_`.
 
-To learn more about Next.js, take a look at the following resources:
+> Si Gemini no está configurado o falla, el chat funciona en **modo offline** con keyword matching.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Uso
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+El proyecto necesita **dos terminales**:
 
-## Deploy on Vercel
+| Terminal | Comando | Puerto | Qué levanta |
+|----------|---------|--------|-------------|
+| 1 | `npm run dev:server` | 4000 | Backend Express (API REST) |
+| 2 | `npm run dev` | 3000 | Frontend Next.js |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Abrí `http://localhost:3000` en el navegador.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Vistas disponibles
+
+| Vista | Descripción |
+|-------|-------------|
+| `welcome` | Pantalla de inicio |
+| `login` | Formulario de inicio de sesión |
+| `patients` | Listado de pacientes |
+| `patient_detail` | Ficha de un paciente |
+| `appointment` | Gestión de turnos |
+| `report` | Reportes e informes |

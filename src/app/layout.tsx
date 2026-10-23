@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "ChatBotWebDinamica",
+  title: "Consultorio — ChatBotWebDinamica",
   description: "Sistema médico con navegación por chat",
 }
 
@@ -27,8 +27,8 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex h-full flex-col">
-        <main className="flex flex-1 flex-col overflow-auto bg-zinc-50">
+      <body className="font-sans flex h-full flex-col">
+        <main className="flex flex-1 flex-col overflow-hidden bg-background">
           {children}
         </main>
       </body>

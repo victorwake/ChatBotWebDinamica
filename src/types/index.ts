@@ -10,3 +10,8 @@ export type Action = {
   view: ViewType
   data?: Record<string, unknown>
 }
+
+export type ViewProps = {
+  data?: Record<string, unknown>
+  onAction?: (action: Action) => void
+}

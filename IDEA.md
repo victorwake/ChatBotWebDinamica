@@ -43,7 +43,7 @@ Usuario
 Chatbot (interfaz de chat)
    │
    ▼
-Mensaje → OpenAI (simulado en fases iniciales)
+Mensaje → Gemini (OpenAI-compatible; fallback por keywords)
    │
    ▼
 Acción JSON: { "action": "show_patients", "data": {...} }
@@ -65,7 +65,7 @@ React interpreta la acción
 | Estilos     | Tailwind CSS                      |
 | Animaciones | Rive.js + Framer Motion           |
 | Backend     | Node.js + Express                 |
-| IA          | OpenAI API + Function Calling     |
+| IA          | Gemini (API OpenAI-compatible)    |
 | Estado      | React Context / Zustand           |
 
 ## Experiencia de Usuario
