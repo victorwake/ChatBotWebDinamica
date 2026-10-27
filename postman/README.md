@@ -20,8 +20,8 @@ backend escucha en otro host o puerto.
 - **10 - Autenticación v1**: CSRF, login, perfil actual y logout están
   implementados.
 - **20, 30 y 40 - Roles v1**: cada carpeta inicia automáticamente sesión con
-  las credenciales de su rol. El login/rol está implementado; las rutas de
-  pacientes y turnos aún pueden devolver `404` hasta completar esas fases.
+  las credenciales de su rol. Las rutas de pacientes, coberturas y referencias
+  ya están implementadas; las rutas de turnos aún pueden devolver `404`.
 
 Las rutas demo actuales no emiten cookies ni tokens y no implementan permisos.
 Para probar autenticación real, usá las rutas `/api/v1/auth` y las cuentas
@@ -50,15 +50,18 @@ guardes contraseñas reales en la colección, en este archivo exportado ni en
 Git. En Postman, mantené los valores sensibles solo en tu entorno local.
 
 Las requests de creación/actualización pueden persistir datos. Usalas solo
-contra una base local de pruebas y elegí un `testNationalId` único.
+contra una base local de pruebas y elegí un `testNationalId` único. Para probar
+coberturas, configurá `coverageProviderId` con el ID de una cobertura activa
+existente en la base; el backend no publica un catálogo administrativo de
+proveedores en esta fase.
 
 ## Orden sugerido
 
 1. Ejecutá **00 - Estado del servicio**.
 2. Para probar hoy, ejecutá **01 - Demo actual**.
-3. Cuando `/api/v1/auth/*` esté implementado, ejecutá la carpeta del rol
-   deseado completa, en orden: cada carpeta obtiene CSRF e inicia sesión con
-   las credenciales de ese rol antes de correr sus pruebas de permisos.
+3. Ejecutá la carpeta del rol deseado en orden: cada carpeta obtiene CSRF e
+   inicia sesión con las credenciales de ese rol antes de correr sus pruebas
+   de permisos.
 4. Antes de cada escritura, ejecutá **Obtener CSRF autenticado** dentro de
    **10 - Contrato v1 - Autenticación** y luego la operación correspondiente
    dentro de la carpeta de rol.

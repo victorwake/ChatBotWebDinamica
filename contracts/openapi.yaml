@@ -363,6 +363,114 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /patients/{patientId}/coverage:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    get:
+      tags: [Patients]
+      operationId: listPatientCoverages
+      summary: Consultar coberturas del paciente
+      description: El paciente solo puede consultar sus propias coberturas; el personal administrativo puede consultar las que gestiona.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Coberturas asociadas al paciente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientCoverage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Patients]
+      operationId: addPatientCoverage
+      summary: Agregar cobertura al paciente
+      description: El paciente puede agregar una cobertura a su propio registro; el personal administrativo puede hacerlo para un paciente.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientCoverageInput"
+      responses:
+        "201":
+          description: Cobertura registrada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientCoverage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /patients/{patientId}/coverage/{coverageId}:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+      - name: coverageId
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    put:
+      tags: [Patients]
+      operationId: updatePatientCoverage
+      summary: Actualizar cobertura del paciente
+      description: El paciente solo puede actualizar sus propias coberturas; el personal administrativo puede actualizar las que gestiona.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientCoverageInput"
+      responses:
+        "200":
+          description: Cobertura actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientCoverage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /specialties:
     get:
       tags: [Scheduling]
@@ -833,7 +941,7 @@ components:
         phone:
           type: string
           minLength: 5
-          maxLength: 30
+          maxLength: 20
         email:
           type: string
           format: email
@@ -849,7 +957,7 @@ components:
         phone:
           type: string
           minLength: 5
-          maxLength: 30
+          maxLength: 20
         email:
           type: string
           format: email
@@ -871,21 +979,28 @@ components:
         phone:
           type: string
     Patient:
-      allOf:
-        - $ref: "#/components/schemas/PatientSummary"
-        - type: object
-          required: [nationalId, birthDate]
-          properties:
-            nationalId:
-              type: string
-            birthDate:
-              type: string
-              format: date
-            email:
-              type: string
-              format: email
-            address:
-              type: string
+      type: object
+      additionalProperties: false
+      required: [id, firstName, lastName, nationalId]
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        nationalId:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        address:
+          type: string
     PatientPage:
       type: object
       additionalProperties: false
@@ -901,6 +1016,66 @@ components:
           type: integer
         totalItems:
           type: integer
+    PatientCoverageInput:
+      type: object
+      additionalProperties: false
+      required: [providerId, memberNumber, validFrom]
+      properties:
+        providerId:
+          type: string
+        memberNumber:
+          type: string
+          minLength: 1
+          maxLength: 50
+        relationship:
+          type: string
+          enum: [titular, beneficiario, extension]
+        holderNationalId:
+          type: string
+          maxLength: 20
+        holderRelationship:
+          type: string
+          maxLength: 50
+        primary:
+          type: boolean
+        validFrom:
+          type: string
+          format: date
+        validUntil:
+          type: string
+          format: date
+        active:
+          type: boolean
+    PatientCoverage:
+      type: object
+      additionalProperties: false
+      required: [id, providerId, providerName, memberNumber, primary, validFrom, active]
+      properties:
+        id:
+          type: string
+        providerId:
+          type: string
+        providerName:
+          type: string
+        memberNumber:
+          type: string
+        relationship:
+          type: string
+          enum: [titular, beneficiario, extension]
+        holderNationalId:
+          type: string
+        holderRelationship:
+          type: string
+        primary:
+          type: boolean
+        validFrom:
+          type: string
+          format: date
+        validUntil:
+          type: string
+          format: date
+        active:
+          type: boolean
     SpecialtySummary:
       type: object
       additionalProperties: false

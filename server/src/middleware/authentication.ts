@@ -129,7 +129,12 @@ export function requirePatientSelfOrRoles(
       return
     }
 
-    if (user.roles.includes("patient") && user.patientId === req.params[patientIdParameter]) {
+    const requestedPatientId = req.params[patientIdParameter]
+    if (
+      user.roles.includes("patient")
+      && typeof requestedPatientId === "string"
+      && user.patientId === requestedPatientId
+    ) {
       next()
       return
     }

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
     "name": "Sistema Médico API",
-    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. La autenticación y sesión /api/v1 están implementadas; los recursos de pacientes y turnos se completan en fases posteriores.",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementadas la autenticación, pacientes, coberturas y referencias; los turnos se completan en la fase siguiente.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,6 +12,7 @@
     { "key": "csrfToken", "value": "" },
     { "key": "patientId", "value": "pat_demo_001" },
     { "key": "otherPatientId", "value": "pat_demo_002" },
+    { "key": "coverageId", "value": "" },
     { "key": "appointmentId", "value": "apt_demo_001" },
     { "key": "slotId", "value": "slot_demo_001" }
   ],
@@ -325,7 +326,7 @@
     },
     {
       "name": "20 - Rol paciente (contrato v1)",
-      "description": "El login y rol patient funcionan desde fase 2. Los recursos de pacientes y turnos de esta carpeta se implementan en fases posteriores; sus requests pueden responder 404 hasta entonces. Ejecutá la carpeta en orden para probar la sesión.",
+      "description": "Pacientes, coberturas y referencias están implementados. Los turnos se completan en la fase siguiente. Ejecutá la carpeta en orden para probar la sesión y los permisos.",
       "item": [
         {
           "name": "Obtener CSRF para login paciente",
@@ -457,6 +458,111 @@
           ]
         },
         {
+          "name": "Consultar mis coberturas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}/coverage"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente consulta sus coberturas', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar cobertura propia",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{coverageProviderId}}\",\n  \"memberNumber\": \"{{coverageMemberNumber}}\",\n  \"relationship\": \"titular\",\n  \"primary\": false,\n  \"validFrom\": \"2026-01-01\",\n  \"active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}/coverage",
+            "description": "Ejecutar Obtener CSRF autenticado antes. Configurar coverageProviderId con el ID de una obra social activa y usar una afiliación de prueba única."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('coverageMemberNumber', 'P3-' + Date.now() + '-' + Math.floor(Math.random() * 1000000));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Agrega cobertura al propio paciente', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "if (body.id) pm.collectionVariables.set('coverageId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar cobertura propia",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{coverageProviderId}}\",\n  \"memberNumber\": \"{{coverageMemberNumber}}-ACT\",\n  \"relationship\": \"titular\",\n  \"primary\": false,\n  \"validFrom\": \"2026-01-01\",\n  \"active\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}/coverage/{{coverageId}}",
+            "description": "Requiere haber ejecutado Agregar cobertura propia y Obtener CSRF autenticado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Actualiza cobertura propia', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar profesionales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/doctors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente autenticado consulta profesionales activos', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Listar mis turnos",
           "request": {
             "method": "GET",
@@ -507,7 +613,7 @@
     },
     {
       "name": "30 - Rol administrativo (contrato v1)",
-      "description": "El login y rol administrativo funcionan desde fase 2. Los recursos de pacientes y turnos de esta carpeta se implementan en fases posteriores; sus requests pueden responder 404 hasta entonces. Ejecutá la carpeta en orden para probar la sesión.",
+      "description": "El login, pacientes y referencias están implementados. Los turnos se completan en la fase siguiente. Ejecutá la carpeta en orden para probar la sesión.",
       "item": [
         {
           "name": "Obtener CSRF para login administrativo",
@@ -660,7 +766,7 @@
     },
     {
       "name": "40 - Rol profesional (contrato v1)",
-      "description": "El login y rol doctor funcionan desde fase 2. Las reglas y recursos específicos de acceso profesional se completan en fases posteriores. Ejecutá la carpeta en orden para probar la sesión.",
+      "description": "El login y la consulta de especialidades/profesionales están implementados. Ejecutá la carpeta en orden para probar la sesión y las referencias disponibles.",
       "item": [
         {
           "name": "Obtener CSRF para login profesional",

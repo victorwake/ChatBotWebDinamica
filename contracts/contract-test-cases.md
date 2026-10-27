@@ -32,12 +32,23 @@ sus fases.
 4. Un paciente no puede consultar ni modificar el registro de otra persona (`403` o `404`, según la política documentada).
 5. Personal administrativo puede crear pacientes; enviar un documento duplicado produce `409`.
 6. Campos desconocidos o inválidos no se aceptan como si fueran válidos.
+7. El detalle de paciente solo se muestra al propio paciente o a personal administrativo; la búsqueda nunca incluye documentos ni notas.
+8. La edición del paciente persiste únicamente los campos permitidos; los errores no exponen SQL ni restricciones internas.
+
+## Coberturas
+
+1. El paciente puede consultar, agregar y actualizar únicamente coberturas de su propio perfil; el personal administrativo puede gestionarlas.
+2. Un paciente no puede consultar ni modificar las coberturas de otra persona (`403`).
+3. La cobertura requiere una entidad proveedora activa y fechas válidas; un rango invertido devuelve `422`.
+4. No se puede duplicar la misma afiliación ni registrar más de una cobertura principal activa por paciente (`409`).
+5. Una cobertura creada puede consultarse de nuevo y sus cambios persisten.
 
 ## Referencias y disponibilidad
 
 1. Un usuario autenticado puede consultar especialidades y profesionales activos disponibles para reservar.
-2. La disponibilidad requiere un rango válido y no mayor a 31 días; rangos inválidos devuelven `422`.
-3. Los espacios devueltos identifican su intervalo y profesional; una respuesta de disponibilidad no se interpreta como reserva.
+2. Los listados de especialidades y profesionales excluyen registros inactivos; un filtro de especialidad inválido devuelve `422`.
+3. La disponibilidad requiere un rango válido y no mayor a 31 días; rangos inválidos devuelven `422`.
+4. Los espacios devueltos identifican su intervalo y profesional; una respuesta de disponibilidad no se interpreta como reserva.
 
 ## Turnos
 
