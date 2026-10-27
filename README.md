@@ -37,7 +37,7 @@ La key es solo de servidor: no uses `NEXT_PUBLIC_`.
 
 `NEXT_PUBLIC_API_URL` contiene la URL pública del backend, no credenciales. El cliente usa `/api/v1`, incluye cookies, obtiene CSRF para escrituras y muestra los errores de red/HTTP sin convertirlos en datos vacíos.
 
-Los datos sintéticos se desactivan por defecto. Para una demostración local se puede establecer `NEXT_PUBLIC_ENABLE_DEMO_DATA=true`; no habilitarlo en producción. El asistente solo puede enviar a Gemini mensajes neutrales de una lista permitida y nunca incluye el historial de conversación.
+El asistente solo envía a Gemini mensajes neutrales de una lista permitida y no incluye datos de pacientes ni el historial de conversación. Las solicitudes para abrir secciones se resuelven localmente y navegan a sus rutas protegidas; la API de chat no decide rutas ni devuelve datos de pacientes.
 
 ## Uso
 

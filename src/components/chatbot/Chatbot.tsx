@@ -2,10 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import type { Message, Action, ViewType } from "@/types"
-import type { Patient } from "@/data/mockPatients"
-import { resolveActionAsync, getBotResponse, getDisambiguationMessage, formatHelp, HELP_LABELS } from "@/lib/actionRegistry"
-import type { RegistryAction } from "@/lib/actionRegistry"
+import { useRouter } from "next/navigation"
+import type { Message } from "@/types"
+import { resolveAction, getBotResponse } from "@/lib/actionRegistry"
 
 const dots = [0, 1, 2]
 
@@ -13,7 +12,7 @@ const SUGGESTIONS = [
   { label: "Pacientes", text: "mostrame los pacientes" },
   { label: "Login", text: "login" },
   { label: "Turno", text: "necesito un turno" },
-  { label: "Informe", text: "reporte" },
+  { label: "Atenciones", text: "atenciones clínicas" },
 ]
 
 function renderText(text: string) {
@@ -25,16 +24,6 @@ function renderText(text: string) {
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>")
   return html
-}
-
-function matchSurname(input: string, patients: Patient[]): Patient | null {
-  const s = input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
-  for (const p of patients) {
-    const surname = p.name.split(" ").slice(1).join(" ").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    if (surname.includes(s) || s.includes(surname)) return p
-  }
-  return null
 }
 
 function normalizeStr(s: string) {
@@ -62,39 +51,17 @@ function isSafeLlmInput(input: string) {
   return SAFE_LLM_INPUTS.has(normalized)
 }
 
-const VALID_VIEWS: ViewType[] = ["welcome", "login", "patients", "patient_detail", "appointment", "report"]
-
-type LlmResponse = {
-  type: "show_view" | "respond"
-  view: ViewType | null
-  data: Record<string, unknown> | null
-  message: string
-}
-
-type ChatbotProps = {
-  onAction: (action: Action) => void
-  onLlmStatusChange?: (usingLlm: boolean) => void
-}
-
-export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
+export default function Chatbot() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     { id: "0", role: "bot", text: "¡Hola! Soy tu asistente médico. ¿En qué puedo ayudarte?" },
   ])
   const [input, setInput] = useState("")
   const [typing, setTyping] = useState(false)
-  const [pendingPatients, setPendingPatients] = useState<Patient[] | null>(null)
   const [usingLlm, setUsingLlm] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-
-  const updateLlmStatus = useCallback(
-    (next: boolean) => {
-      setUsingLlm(next)
-      onLlmStatusChange?.(next)
-    },
-    [onLlmStatusChange],
-  )
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -116,74 +83,19 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
 
       if (!response.ok) return false
 
-      const result: LlmResponse = await response.json()
+      const result: unknown = await response.json()
+      if (!result || typeof result !== "object" || !("message" in result) || typeof result.message !== "string") {
+        return false
+      }
 
       const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: result.message }
       setMessages((prev) => [...prev, botMsg])
       setTyping(false)
-
-      if (result.view && VALID_VIEWS.includes(result.view)) {
-        let actionData = result.data ?? undefined
-        if (result.view === "patients") {
-          actionData = (await resolveActionAsync("pacientes")).data
-        } else if (result.view === "patient_detail" && result.data?.patient) {
-          const action = await resolveActionAsync(text)
-          const matches = action.pendingPatients
-          if (matches) {
-            setPendingPatients(matches)
-            setMessages((prev) => [...prev.slice(0, -1), {
-              id: crypto.randomUUID(),
-              role: "bot",
-              text: getDisambiguationMessage(matches),
-            }])
-            return true
-          }
-          actionData = action.view === "patient_detail" ? action.data : undefined
-        }
-        onAction({ view: result.view, data: actionData })
-      } else {
-        const cleaned = text.replace(/[^\w\sáéíóúüñ]/gi, "").trim().toLowerCase()
-        const isHelpRequest = HELP_LABELS.some((w) => cleaned.includes(w))
-        const action = (await resolveActionAsync(text)) as RegistryAction
-        if (action.view !== "welcome" && !action.pendingPatients) {
-          const botText = isHelpRequest ? formatHelp() : getBotResponse(text, action)
-          setMessages((prev) => [...prev.slice(0, -1), {
-            id: crypto.randomUUID(), role: "bot",
-            text: botText,
-          }])
-          onAction(action)
-        } else if (action.pendingPatients && action.pendingPatients.length > 0) {
-          setPendingPatients(action.pendingPatients)
-          setMessages((prev) => [...prev.slice(0, -1), {
-            id: crypto.randomUUID(), role: "bot",
-            text: getDisambiguationMessage(action.pendingPatients!),
-          }])
-        } else if (isHelpRequest) {
-          setMessages((prev) => [...prev.slice(0, -1), {
-            id: crypto.randomUUID(), role: "bot",
-            text: formatHelp(),
-          }])
-        } else {
-          const lowerMsg = result.message.toLowerCase()
-          if (/credenciales|iniciar sesion|logue[ae]r|acceder|usuario|contraseña|login/i.test(lowerMsg)) {
-            onAction({ view: "login" })
-          } else if (/listado.*pacientes|pacientes.*registrados|todos los pacientes/i.test(lowerMsg)) {
-            onAction({ view: "patients" })
-          } else if (/turno|cita|agendar/i.test(lowerMsg)) {
-            onAction({ view: "appointment" })
-          } else if (/reporte|informe/i.test(lowerMsg)) {
-            onAction({ view: "report" })
-          } else if (/bienvenido|inicio|principal/i.test(lowerMsg)) {
-            onAction({ view: "welcome" })
-          }
-        }
-      }
-
       return true
     } catch {
       return false
     }
-  }, [onAction])
+  }, [])
 
   async function sendText(text: string) {
     if (!text) return
@@ -196,52 +108,13 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
 
     await new Promise((r) => setTimeout(r, 400))
 
-    if (pendingPatients) {
-      if (/\b(?:cancelar|volver|ninguno|ninguna|no)\b/i.test(text)) {
-        setPendingPatients(null)
-        const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: "Está bien, me decís si querés otra cosa." }
-        setMessages((prev) => [...prev, botMsg])
-        setTyping(false)
-        return
-      }
-
-      const matched = matchSurname(text, pendingPatients)
-      if (matched) {
-        setPendingPatients(null)
-        const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: `Mostrando la ficha de **${matched.name}**.` }
-        setMessages((prev) => [...prev, botMsg])
-        setTyping(false)
-        onAction({ view: "patient_detail", data: { patient: matched } })
-      } else {
-        const surnames = pendingPatients.map((p) => p.name.split(" ").slice(1).join(" "))
-        const botMsg: Message = {
-          id: crypto.randomUUID(), role: "bot",
-          text: `No encontré ese apellido. Los disponibles son: ${surnames.join(", ")}`,
-        }
-        setMessages((prev) => [...prev, botMsg])
-        setTyping(false)
-      }
-      return
-    }
-
     if (usingLlm && isSafeLlmInput(text)) {
       const llmHandled = await processLlm(text)
       if (llmHandled) return
-      updateLlmStatus(false)
+      setUsingLlm(false)
     }
 
-    const action = await resolveActionAsync(text) as RegistryAction
-    if (action.pendingPatients) {
-      setPendingPatients(action.pendingPatients)
-      const botMsg: Message = {
-        id: crypto.randomUUID(), role: "bot",
-        text: getDisambiguationMessage(action.pendingPatients),
-      }
-      setMessages((prev) => [...prev, botMsg])
-      setTyping(false)
-      return
-    }
-
+    const action = resolveAction(text)
     const botText = getBotResponse(text, action)
     const botMsg: Message = {
       id: crypto.randomUUID(),
@@ -250,7 +123,7 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
     }
     setMessages((prev) => [...prev, botMsg])
     setTyping(false)
-    onAction(action)
+    if (action) router.push(action.href)
   }
 
   async function handleSend() {

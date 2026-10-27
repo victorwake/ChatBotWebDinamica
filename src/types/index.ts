@@ -4,14 +4,6 @@ export type Message = {
   text: string
 }
 
-export type ViewType = "welcome" | "login" | "patients" | "patient_detail" | "appointment" | "report"
-
 export type Action = {
-  view: ViewType
-  data?: Record<string, unknown>
-}
-
-export type ViewProps = {
-  data?: Record<string, unknown>
-  onAction?: (action: Action) => void
+  href: "/" | "/login" | "/patients" | "/appointments" | "/consultations"
 }
