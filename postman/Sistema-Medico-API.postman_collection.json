@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
     "name": "Sistema Médico API",
-    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Las rutas legacy están implementadas; el contrato v1 de autenticación y roles todavía está pendiente de las fases correspondientes.",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. La autenticación y sesión /api/v1 están implementadas; los recursos de pacientes y turnos se completan en fases posteriores.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -139,7 +139,7 @@
     },
     {
       "name": "10 - Contrato v1 - Autenticación",
-      "description": "Contrato objetivo; hoy puede responder 404 hasta implementar la Fase 2. Ejecutar Obtener CSRF antes de cada login. Postman conserva automáticamente la cookie de sesión devuelta por login.",
+      "description": "Autenticación de fase 2 implementada. Ejecutar Obtener CSRF antes del login. Postman conserva automáticamente la cookie de sesión devuelta por login.",
       "item": [
         {
           "name": "Obtener CSRF pre-login",
@@ -325,7 +325,7 @@
     },
     {
       "name": "20 - Rol paciente (contrato v1)",
-      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como paciente automáticamente antes de probar los permisos. Para PATCH, ejecutá Obtener CSRF autenticado inmediatamente antes.",
+      "description": "El login y rol patient funcionan desde fase 2. Los recursos de pacientes y turnos de esta carpeta se implementan en fases posteriores; sus requests pueden responder 404 hasta entonces. Ejecutá la carpeta en orden para probar la sesión.",
       "item": [
         {
           "name": "Obtener CSRF para login paciente",
@@ -507,7 +507,7 @@
     },
     {
       "name": "30 - Rol administrativo (contrato v1)",
-      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como personal administrativo antes de probar sus permisos. Las operaciones de escritura requieren Obtener CSRF autenticado inmediatamente antes.",
+      "description": "El login y rol administrativo funcionan desde fase 2. Los recursos de pacientes y turnos de esta carpeta se implementan en fases posteriores; sus requests pueden responder 404 hasta entonces. Ejecutá la carpeta en orden para probar la sesión.",
       "item": [
         {
           "name": "Obtener CSRF para login administrativo",
@@ -660,7 +660,7 @@
     },
     {
       "name": "40 - Rol profesional (contrato v1)",
-      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como profesional antes de probar sus permisos. Las reglas específicas de acceso profesional aún deben completarse en fases posteriores.",
+      "description": "El login y rol doctor funcionan desde fase 2. Las reglas y recursos específicos de acceso profesional se completan en fases posteriores. Ejecutá la carpeta en orden para probar la sesión.",
       "item": [
         {
           "name": "Obtener CSRF para login profesional",

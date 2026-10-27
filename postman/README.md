@@ -17,15 +17,15 @@ backend escucha en otro host o puerto.
 - **01 - Demo actual**: rutas `/api` temporales, públicas y sin sesión ni roles.
   `legacyEmail` y `legacyPassword` son editables; no se reutilizan para el
   contrato nuevo.
-- **10, 20, 30 y 40 - Contrato v1**: organizados por autenticación y roles
-  paciente, administrativo y profesional. Son pruebas objetivo del contrato
-  OpenAPI. Pueden devolver `404` hasta que se implementen las fases de
-  autenticación, pacientes y turnos.
+- **10 - Autenticación v1**: CSRF, login, perfil actual y logout están
+  implementados.
+- **20, 30 y 40 - Roles v1**: cada carpeta inicia automáticamente sesión con
+  las credenciales de su rol. El login/rol está implementado; las rutas de
+  pacientes y turnos aún pueden devolver `404` hasta completar esas fases.
 
 Las rutas demo actuales no emiten cookies ni tokens y no implementan permisos.
-Por eso no es posible probar hoy el login real ni la separación por roles con
-esas rutas; la colección deja explícita esa diferencia y prepara los casos para
-cuando exista `/api/v1`.
+Para probar autenticación real, usá las rutas `/api/v1/auth` y las cuentas
+provisionadas en MySQL.
 
 ## Sesión y CSRF automáticos
 

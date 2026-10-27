@@ -14,6 +14,7 @@ npm run build
 npm run migrate
 npm run dev
 npm start
+npm test
 ```
 
 `npm start` y `npm run migrate:prod` esperan que exista `.env` en la carpeta `server`. La migración no se ejecuta automáticamente al iniciar el servicio: debe correrse explícitamente antes de desplegar una versión que la necesite.
@@ -35,4 +36,12 @@ Los scripts existentes de `scripts_mysql/mysql/` son de preparación inicial/des
 - `GET /api/v1/health/live`: confirma que el proceso HTTP está activo.
 - `GET /api/v1/health/ready`: confirma que MySQL acepta consultas; devuelve `503` si no está disponible.
 
-El resto de las rutas actuales de demostración continúa separado del contrato versionado hasta fases posteriores.
+## Autenticación de fase 2
+
+La API `/api/v1/auth` usa sesiones opacas almacenadas en MySQL. La cookie `session` es `HttpOnly`, `SameSite=Lax`, `Path=/` y se marca `Secure` en producción. `GET /api/v1/auth/csrf` crea o reutiliza el contexto de sesión y entrega un token ligado a esa cookie; enviá `X-CSRF-Token` en login, logout y futuras escrituras. La colección Postman guarda automáticamente cookies en su cookie jar.
+
+El login consulta las tablas de cuentas/roles existentes; no hay usuarios demo ni contraseñas incorporados por la API. Acepta hashes Argon2id y hashes bcrypt heredados; al primer login válido con bcrypt, migra el hash a Argon2id. Los nombres de rol en español se traducen a los valores estables del contrato (`patient`, `doctor`, `administrative`, `administrator`). Los intentos están limitados por IP en memoria; para ejecutar varias instancias en producción, configurar un store compartido de rate limit.
+
+El logout invalida la sesión en MySQL y expira la cookie. `/api/v1/auth/me` vuelve a cargar el estado y roles desde la base, de modo que cuentas desactivadas o roles revocados dejan de autorizarse. Las rutas demo `/api/auth`, `/api/patients` y `/api/appointments` siguen sin sesión ni autorización hasta su migración en fases posteriores; no deben exponerse como API protegida.
+
+`npm test` compila y ejecuta el flujo de integración contra la base de `.env`: crea una cuenta de paciente sintética con identificadores únicos, prueba CSRF/login/sesión/logout y borra sus propios datos al finalizar. Usalo solamente con una base local de desarrollo, nunca con datos productivos.

@@ -3,6 +3,7 @@ import express from "express"
 import { config } from "./config"
 import { errorHandler } from "./middleware/error-handler"
 import { requestContext } from "./middleware/request-context"
+import authV1Routes from "./routes/auth-v1"
 import appointmentsRoutes from "./routes/appointments"
 import authRoutes from "./routes/auth"
 import healthRoutes from "./routes/health"
@@ -15,6 +16,7 @@ app.use(cors({ origin: config.corsOrigins, credentials: true }))
 app.use(express.json({ limit: "1mb" }))
 
 app.use("/api/v1/health", healthRoutes)
+app.use("/api/v1/auth", authV1Routes)
 
 // Existing demonstration endpoints remain unchanged until their migration phases.
 app.use("/api/auth", authRoutes)

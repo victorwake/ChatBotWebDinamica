@@ -2,7 +2,9 @@
 
 Estos casos verifican comportamiento observable del MVP sin depender del lenguaje,
 framework o base de datos del backend. Los datos y credenciales son ficticios.
-La ejecución automatizada se incorpora cuando haya una API implementada.
+La autenticación `/api/v1/auth` cuenta con pruebas de integración en
+`server/test/auth-flow.test.ts`; los casos de recursos se ejecutan al implementar
+sus fases.
 
 ## Health checks
 
@@ -19,6 +21,8 @@ La ejecución automatizada se incorpora cuando haya una API implementada.
 5. Login inválido devuelve `401` con `error.code` estable y sin indicar si el email existe.
 6. `GET /api/v1/auth/me` sin sesión devuelve `401`; con sesión devuelve el usuario y sus roles.
 7. Logout con sesión y CSRF válido devuelve `204`; las solicitudes posteriores con esa sesión reciben `401`.
+8. Los roles locales se devuelven normalizados como `patient`, `doctor`, `administrative` o `administrator`.
+9. Un guard de rol rechaza con `403` a un usuario sin el perfil requerido; un paciente solo supera el guard para su propio `patientId`.
 
 ## Pacientes
 
