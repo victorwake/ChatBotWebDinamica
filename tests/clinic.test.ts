@@ -1,12 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ApiError } from "../src/lib/api"
 import {
+  addConsultationDiagnosis,
+  addConsultationTreatment,
+  createConsultation,
+  createConsultationPrescription,
   createAppointment,
   createPatient,
+  getConsultation,
   getClinicErrorMessage,
   listAppointments,
   listAvailability,
+  listDoctors,
   listPatients,
+  listPatientMedicalHistory,
+  listConsultations,
+  listSpecialties,
 } from "../src/lib/clinic"
 
 const patientSummary = {
@@ -66,6 +75,178 @@ describe("clinic API contract", () => {
     })))
 
     await expect(listPatients()).rejects.toThrow(/invalid paginated response/i)
+  })
+
+  it("loads the documented specialty and doctor references, including specialty filtering", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    const specialties = [{ id: "sp_2", name: "Clínica" }]
+    const doctors = [{
+      id: "doc_4",
+      displayName: "Dra. Ejemplo",
+      specialty: specialties[0],
+    }]
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json(specialties))
+      .mockResolvedValueOnce(Response.json(doctors))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(listSpecialties()).resolves.toEqual(specialties)
+    await expect(listDoctors("sp_2")).resolves.toEqual(doctors)
+
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:4000/api/v1/specialties")
+    expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:4000/api/v1/doctors?specialtyId=sp_2")
+  })
+
+  it("rejects malformed professional reference data", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json([
+      { id: "doc_4", displayName: "Missing specialty" },
+    ])))
+
+    await expect(listDoctors()).rejects.toThrow(/invalid doctor list/i)
+  })
+
+  it("loads authorized clinical pages and encodes medical-history filters", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    const consultation = {
+      id: "consult_8",
+      appointmentId: "apt_55",
+      patient: { id: "pat_12", displayName: "Ana Ejemplo" },
+      doctor: { id: "doc_4", displayName: "Dra. Ejemplo" },
+      specialty: { id: "sp_2", name: "Clínica" },
+      consultationDate: "2026-10-27T13:00:00.000Z",
+      type: "control",
+      primaryDiagnosis: "Control anual",
+    }
+    const page = { items: [consultation], page: 1, pageSize: 20, totalItems: 1 }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json(page))
+      .mockResolvedValueOnce(Response.json(page))
+      .mockResolvedValueOnce(Response.json({
+        ...consultation,
+        diagnoses: [],
+        treatments: [],
+        prescriptions: [],
+      }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(listConsultations({ page: 1, pageSize: 20 })).resolves.toEqual(page)
+    await expect(listPatientMedicalHistory("pat/12", {
+      from: "2026-01-01",
+      to: "2027-01-01",
+      page: 1,
+      pageSize: 20,
+    })).resolves.toEqual(page)
+    await expect(getConsultation("consult_8")).resolves.toMatchObject({
+      id: "consult_8",
+      diagnoses: [],
+      treatments: [],
+      prescriptions: [],
+    })
+
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:4000/api/v1/consultations?page=1&pageSize=20")
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "http://localhost:4000/api/v1/patients/pat%2F12/medical-history?from=2026-01-01&to=2027-01-01&page=1&pageSize=20",
+    )
+    expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:4000/api/v1/consultations/consult_8")
+  })
+
+  it("creates clinical records and entries with CSRF and validates response shapes", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    const createdConsultation = {
+      id: "consult_8",
+      appointmentId: "apt_55",
+      patient: { id: "pat_12", displayName: "Ana Ejemplo" },
+      doctor: { id: "doc_4", displayName: "Dra. Ejemplo" },
+      specialty: { id: "sp_2", name: "Clínica" },
+      consultationDate: "2026-10-27T13:00:00.000Z",
+      diagnoses: [],
+      treatments: [],
+      prescriptions: [],
+    }
+    const diagnosis = {
+      id: "diag_1",
+      name: "Control",
+      diagnosisDate: "2026-10-27",
+      primary: true,
+    }
+    const treatment = {
+      id: "treat_1",
+      name: "Reposo",
+      startDate: "2026-10-27",
+      active: true,
+    }
+    const prescription = {
+      id: "rx_1",
+      number: "RX-001",
+      issueDate: "2026-10-27",
+      validUntil: "2026-11-27",
+      items: [{
+        id: "item_1",
+        medicationName: "Medicamento",
+        dose: "1 unidad",
+        frequency: "Cada 8 horas",
+      }],
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ csrfToken: "c".repeat(32) }))
+      .mockResolvedValueOnce(Response.json(createdConsultation, { status: 201 }))
+      .mockResolvedValueOnce(Response.json({ csrfToken: "d".repeat(32) }))
+      .mockResolvedValueOnce(Response.json(diagnosis, { status: 201 }))
+      .mockResolvedValueOnce(Response.json({ csrfToken: "e".repeat(32) }))
+      .mockResolvedValueOnce(Response.json(treatment, { status: 201 }))
+      .mockResolvedValueOnce(Response.json({ csrfToken: "f".repeat(32) }))
+      .mockResolvedValueOnce(Response.json(prescription, { status: 201 }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(createConsultation({
+      appointmentId: "apt_55",
+      type: "control",
+      primaryDiagnosis: "Control anual",
+      systolicPressure: 120,
+    })).resolves.toEqual(createdConsultation)
+    await expect(addConsultationDiagnosis("consult_8", diagnosis)).resolves.toEqual(diagnosis)
+    await expect(addConsultationTreatment("consult_8", treatment)).resolves.toEqual(treatment)
+    await expect(createConsultationPrescription("consult_8", {
+      validUntil: "2026-11-27",
+      items: [{ medicationName: "Medicamento", dose: "1 unidad", frequency: "Cada 8 horas" }],
+    })).resolves.toEqual(prescription)
+
+    expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:4000/api/v1/consultations")
+    expect(fetchMock.mock.calls[1][1].headers.get("X-CSRF-Token")).toBe("c".repeat(32))
+    expect(fetchMock.mock.calls[3][0]).toBe("http://localhost:4000/api/v1/consultations/consult_8/diagnoses")
+    expect(fetchMock.mock.calls[5][0]).toBe("http://localhost:4000/api/v1/consultations/consult_8/treatments")
+    expect(fetchMock.mock.calls[7][0]).toBe("http://localhost:4000/api/v1/consultations/consult_8/prescriptions")
+  })
+
+  it("rejects clinical responses that do not match the API contract", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({
+        items: [{ id: "consult_8", patient: {} }],
+        page: 1,
+        pageSize: 20,
+        totalItems: 1,
+      }))
+      .mockResolvedValueOnce(Response.json({
+        id: "consult_8",
+        patient: { id: "pat_12", displayName: "Ana Ejemplo" },
+        doctor: { id: "doc_4", displayName: "Dra. Ejemplo" },
+        specialty: { id: "sp_2", name: "Clínica" },
+        consultationDate: "2026-10-27T13:00:00.000Z",
+      }))
+      .mockResolvedValueOnce(Response.json({
+        error: {
+          code: "FORBIDDEN",
+          message: "No autorizado",
+          requestId: "req_1",
+        },
+      }, { status: 403 }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(listConsultations()).rejects.toThrow(/invalid paginated response/i)
+    await expect(getConsultation("consult_8")).rejects.toThrow(/clinic contract/i)
+    await expect(listPatientMedicalHistory("pat_12")).rejects.toMatchObject({ status: 403, code: "FORBIDDEN" })
   })
 
   it("sends a fresh CSRF token before creating a patient", async () => {

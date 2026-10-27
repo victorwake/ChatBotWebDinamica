@@ -23,14 +23,25 @@ export default function ApplicationShell({
     ...(user
       ? [
           { href: "/dashboard", label: "Panel" },
+          { href: "/doctors", label: "Profesionales" },
+          { href: "/specialties", label: "Especialidades" },
           ...(user.roles.includes("administrative")
             ? [{ href: "/patients", label: "Pacientes" }]
             : []),
           ...(user.roles.some((role) => role !== "administrator")
             ? [{ href: "/appointments", label: "Turnos" }]
             : []),
+          ...(user.roles.some((role) => role === "patient" || role === "doctor")
+            ? [{ href: "/consultations", label: "Atenciones clínicas" }]
+            : []),
           ...(user.roles.includes("administrative")
             ? [{ href: "/appointments/manage", label: "Gestión de turnos" }]
+            : []),
+          ...(user.roles.includes("administrator")
+            ? [
+                { href: "/users", label: "Cuentas" },
+                { href: "/audit-logs", label: "Auditoría" },
+              ]
             : []),
           { href: "/profile", label: "Mi perfil" },
         ]

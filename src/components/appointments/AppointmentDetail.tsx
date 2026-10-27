@@ -18,6 +18,7 @@ export default function AppointmentDetail({ appointmentId }: { appointmentId: st
   const [appointment, setAppointment] = useState<Appointment | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const canCancel = Boolean(
@@ -37,10 +38,24 @@ export default function AppointmentDetail({ appointmentId }: { appointmentId: st
       || user?.roles.includes("administrative")
     ),
   )
+  const canRecordConsultation = Boolean(
+    appointment
+    && user?.roles.includes("doctor")
+    && !user.roles.includes("patient")
+    && new Date(appointment.startsAt).getTime() <= now
+    && !["cancelled", "no_show"].includes(appointment.status),
+  )
+  const canViewPatientHistory = Boolean(
+    appointment
+    && user?.roles.includes("doctor")
+    && !user.roles.includes("patient")
+    && !["cancelled", "no_show"].includes(appointment.status),
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setAppointment(null)
     try {
       setAppointment(await getAppointment(appointmentId))
     } catch (requestError) {
@@ -51,6 +66,11 @@ export default function AppointmentDetail({ appointmentId }: { appointmentId: st
   }, [appointmentId])
 
   useEffect(() => { void Promise.resolve().then(load) }, [load])
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
+    void Promise.resolve().then(() => setNow(Date.now()))
+    return () => window.clearInterval(timer)
+  }, [])
 
   async function mutate(operation: () => Promise<Appointment>, successMessage: string) {
     setBusy(true)
@@ -131,6 +151,24 @@ export default function AppointmentDetail({ appointmentId }: { appointmentId: st
                 className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"
               >
                 Reprogramar
+              </Link>
+            )}
+            {canRecordConsultation && (
+              <>
+                <Link
+                  href={`/consultations/new?appointmentId=${encodeURIComponent(appointment.id)}`}
+                  className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Registrar atención
+                </Link>
+              </>
+            )}
+            {canViewPatientHistory && (
+              <Link
+                href={`/patients/${encodeURIComponent(appointment.patient.id)}/medical-history`}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-teal-800"
+              >
+                Historial del paciente
               </Link>
             )}
             <Link href="/appointments" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">

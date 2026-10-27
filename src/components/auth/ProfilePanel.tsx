@@ -37,6 +37,14 @@ export default function ProfilePanel() {
               <Link href={`/patients/${encodeURIComponent(user.patientId)}`} className="text-teal-800 underline underline-offset-2">
                 Ver datos y coberturas
               </Link>
+              {user.roles.includes("patient") && (
+                <>
+                  {" · "}
+                  <Link href={`/patients/${encodeURIComponent(user.patientId)}/medical-history`} className="text-teal-800 underline underline-offset-2">
+                    Historial clínico
+                  </Link>
+                </>
+              )}
             </dd>
           </div>
         )}

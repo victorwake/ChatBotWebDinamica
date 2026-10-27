@@ -5,23 +5,30 @@ import { useSession } from "@/contexts/SessionContext"
 import { getRoleLabel, type UserRole } from "@/lib/session"
 
 const roleDescriptions: Record<UserRole, string> = {
-  patient: "Consultá tus datos de contacto y coberturas, solicitá turnos y revisá su estado.",
-  doctor: "Consultá los turnos asociados a tu perfil.",
+  patient: "Consultá tus datos, coberturas e historial clínico; solicitá turnos y revisá su estado.",
+  doctor: "Consultá tus turnos, accedé a los historiales autorizados y registrá atenciones clínicas.",
   administrative: "Gestioná pacientes, coberturas y solicitudes de turnos sin acceso a datos clínicos.",
-  administrator: "La administración de cuentas y auditoría se habilitará en su fase específica; este rol no concede acceso clínico.",
+  administrator: "Administrá las cuentas y revisá la auditoría de cambios. Este rol no concede acceso clínico.",
 }
 
 const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
   patient: [
     { href: "/profile", label: "Ver mi perfil" },
     { href: "/appointments", label: "Mis turnos" },
+    { href: "/consultations", label: "Mis atenciones clínicas" },
   ],
-  doctor: [{ href: "/appointments", label: "Ir a turnos" }],
+  doctor: [
+    { href: "/appointments", label: "Ir a turnos" },
+    { href: "/consultations", label: "Atenciones clínicas" },
+  ],
   administrative: [
     { href: "/patients", label: "Ir a pacientes" },
     { href: "/appointments/manage", label: "Gestionar turnos" },
   ],
-  administrator: [],
+  administrator: [
+    { href: "/users", label: "Gestionar cuentas" },
+    { href: "/audit-logs", label: "Consultar auditoría" },
+  ],
 }
 
 export default function DashboardContent() {

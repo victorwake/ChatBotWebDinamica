@@ -123,6 +123,11 @@ export default function PatientDetail({ patientId }: { patientId: string }) {
                   Editar mis datos de contacto
                 </Link>
               )}
+              {canEditOwnProfile && (
+                <Link href={`/patients/${encodeURIComponent(patientId)}/medical-history`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-teal-800">
+                  Historial clínico
+                </Link>
+              )}
               <Link href="/patients" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">
                 Volver a pacientes
               </Link>
