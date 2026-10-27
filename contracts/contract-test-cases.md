@@ -64,6 +64,18 @@ sus fases.
 10. Turnos completados y ausentes se devuelven como `completed` y `no_show`; no se permiten transiciones desde estados terminales.
 11. Una operación de escritura sin sesión devuelve `401`; sin permiso, `403`; con datos inválidos, `422`.
 
+## Atención e historial clínico
+
+1. Solo el profesional asignado puede registrar una atención de un turno propio iniciado; turno y consulta se actualizan de forma atómica.
+2. No se registra una segunda consulta para el mismo turno ni se atienden turnos futuros, cancelados o ausentes.
+3. El profesional que registró la consulta y el paciente propietario pueden consultar el detalle; un paciente distinto recibe `404`.
+4. Solo el profesional autor de la atención puede asociar diagnósticos, tratamientos y recetas; los campos inválidos devuelven `422`.
+5. Una receta se guarda con sus ítems en una sola transacción y su número lo genera el servidor.
+6. El paciente solo puede consultar su propio historial. El profesional solo consulta atenciones propias de un paciente con relación asistencial vigente.
+7. Los roles administrativos no pueden listar ni consultar consultas, diagnósticos, tratamientos, recetas o historial clínico (`403`).
+8. Las listas están paginadas y filtradas por fechas sin que parámetros enviados por el cliente amplíen el alcance de autorización.
+9. Logs y errores no incluyen contenido clínico, SQL, credenciales ni stack traces.
+
 ## Reglas comunes de verificación
 
 - Los errores siguen `ErrorResponse` y tienen `requestId`; nunca contienen SQL, stack traces, secretos ni datos clínicos.

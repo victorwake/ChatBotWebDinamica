@@ -24,6 +24,9 @@ backend escucha en otro host o puerto.
   están implementadas. La Fase 4 implementa disponibilidad, reservas y
   transiciones de turnos; probalas con
   profesionales que tengan horarios semanales activos.
+- **Atención clínica - Fase 5**: pacientes consultan su historial propio. La
+  carpeta profesional agrega una atención solo para un turno propio iniciado,
+  y luego permite consultar detalle y agregar un diagnóstico de prueba.
 
 Las rutas demo actuales no emiten cookies ni tokens y no implementan permisos.
 Para probar autenticación real, usá las rutas `/api/v1/auth` y las cuentas
@@ -58,6 +61,15 @@ existente en la base; el backend no publica un catálogo administrativo de
 proveedores en esta fase. Para probar turnos, usá un profesional con horario
 semanal activo en `America/Argentina/Buenos_Aires` y un rango futuro de hasta
 31 días.
+
+Las operaciones clínicas de escritura son persistentes y deben ejecutarse
+únicamente con datos y cuentas sintéticas en una base local. Para registrar una
+atención, prepará primero un turno sintético propio ya iniciado y elegible, y
+configurá manualmente `clinicalAppointmentId`; la colección no selecciona
+turnos existentes automáticamente para evitar modificar datos reales. Luego
+ejecutá **Obtener CSRF para registrar atención** y **Registrar atención
+clínica**. Diagnósticos, tratamientos y recetas son datos clínicos sensibles y
+no deben probarse con información real.
 
 ## Orden sugerido
 

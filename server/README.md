@@ -42,6 +42,10 @@ La API `/api/v1/auth` usa sesiones opacas almacenadas en MySQL. La cookie `sessi
 
 El login consulta las tablas de cuentas/roles existentes; no hay usuarios demo ni contraseñas incorporados por la API. Acepta hashes Argon2id y hashes bcrypt heredados; al primer login válido con bcrypt, migra el hash a Argon2id. Los nombres de rol en español se traducen a los valores estables del contrato (`patient`, `doctor`, `administrative`, `administrator`). Los intentos están limitados por IP en memoria; para ejecutar varias instancias en producción, configurar un store compartido de rate limit.
 
-El logout invalida la sesión en MySQL y expira la cookie. `/api/v1/auth/me` vuelve a cargar el estado y roles desde la base, de modo que cuentas desactivadas o roles revocados dejan de autorizarse. Las rutas demo `/api/auth`, `/api/patients` y `/api/appointments` siguen sin sesión ni autorización hasta su migración en fases posteriores; no deben exponerse como API protegida.
+El logout invalida la sesión en MySQL y expira la cookie. `/api/v1/auth/me` vuelve a cargar el estado y roles desde la base, de modo que cuentas desactivadas o roles revocados dejan de autorizarse. Las rutas demo `/api/auth`, `/api/patients` y `/api/appointments` siguen sin sesión ni autorización; no deben exponerse como API protegida. Para la aplicación, usar las rutas versionadas `/api/v1`.
 
 `npm test` compila y ejecuta el flujo de integración contra la base de `.env`: crea una cuenta de paciente sintética con identificadores únicos, prueba CSRF/login/sesión/logout y borra sus propios datos al finalizar. Usalo solamente con una base local de desarrollo, nunca con datos productivos.
+
+## Datos clínicos de fase 5
+
+`/api/v1/consultations` permite a un profesional registrar una atención únicamente para un turno propio iniciado, y guarda el cambio del turno a `completed` en la misma transacción. El profesional puede asociar diagnósticos, tratamientos y recetas a sus consultas. Los pacientes solo pueden consultar su propio historial y los profesionales solo sus atenciones y relaciones asistenciales; los roles administrativos no tienen acceso a endpoints clínicos. No registrar datos reales en ambientes de prueba. `npm test` usa datos clínicos sintéticos y limpia los registros que crea.

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
     "name": "Sistema Médico API",
-    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementados autenticación, pacientes, coberturas, referencias y turnos.",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementados autenticación, pacientes, coberturas, referencias, turnos y operaciones clínicas protegidas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,6 +14,8 @@
     { "key": "otherPatientId", "value": "pat_demo_002" },
     { "key": "coverageId", "value": "" },
     { "key": "appointmentId", "value": "apt_demo_001" },
+    { "key": "clinicalAppointmentId", "value": "" },
+    { "key": "consultationId", "value": "" },
     { "key": "slotId", "value": "slot_demo_001" }
   ],
   "item": [
@@ -694,6 +696,26 @@
           ]
         },
         {
+          "name": "Consultar mi historial clínico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}/medical-history?page=1&pageSize=20",
+            "description": "El patientId se obtiene del login del paciente. Solo usar cuentas y datos clínicos sintéticos de una base local."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente consulta su propio historial', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Actualizar teléfono propio",
           "request": {
             "method": "PATCH",
@@ -1034,16 +1056,66 @@
             "header": [],
             "url": "{{baseUrl}}{{apiPrefix}}/appointments?page=1&pageSize=20"
           },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profesional consulta solo su agenda', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "Obtener CSRF para registrar atención",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CSRF autenticado disponible', function () { pm.response.to.have.status(200); });", "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"] } }]
+        },
+        {
+          "name": "Registrar atención clínica",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"appointmentId\": \"{{clinicalAppointmentId}}\",\n  \"type\": \"programada\",\n  \"reason\": \"Consulta de prueba sintética\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}{{apiPrefix}}/consultations",
+            "description": "Configurar clinicalAppointmentId manualmente con un turno sintético propio ya iniciado y elegible. No se seleccionan automáticamente turnos existentes para evitar modificar datos reales."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Atención clínica creada', function () { pm.response.to.have.status(201); });", "const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('consultationId', body.id);"] } }]
+        },
+        {
+          "name": "Consultar detalle clínico",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}{{apiPrefix}}/consultations/{{consultationId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profesional consulta su atención', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Agregar diagnóstico sintético",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Diagnóstico de prueba sintético\",\n  \"diagnosisDate\": \"{{clinicalDate}}\",\n  \"status\": \"activo\",\n  \"primary\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}{{apiPrefix}}/consultations/{{consultationId}}/diagnoses"
+          },
           "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Profesional consulta solo su agenda', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
-                ]
-              }
-            }
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('clinicalDate', new Date().toISOString().slice(0, 10));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Diagnóstico creado', function () { pm.response.to.have.status(201); });"] } }
+          ]
+        },
+        {
+          "name": "Agregar tratamiento sintético",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Tratamiento de prueba sintético\",\n  \"startDate\": \"{{clinicalDate}}\",\n  \"durationDays\": 1,\n  \"active\": true\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}{{apiPrefix}}/consultations/{{consultationId}}/treatments"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('clinicalDate', new Date().toISOString().slice(0, 10));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Tratamiento creado', function () { pm.response.to.have.status(201); });"] } }
+          ]
+        },
+        {
+          "name": "Emitir receta sintética",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"validUntil\": \"{{clinicalValidUntil}}\",\n  \"items\": [{ \"medicationName\": \"Medicamento de prueba sintético\", \"dose\": \"Una unidad\", \"frequency\": \"Una vez al día\" }]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}{{apiPrefix}}/consultations/{{consultationId}}/prescriptions"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('clinicalValidUntil', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));"] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Receta emitida', function () { pm.response.to.have.status(201); });"] } }
           ]
         }
       ]

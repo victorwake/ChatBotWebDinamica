@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: |
     Contrato HTTP independiente de la tecnología del backend.
-    Esta versión define el MVP: sesión, pacientes, referencias para turnos
-    y gestión básica de turnos. No incluye historia clínica.
+    Esta versión define sesión, pacientes, referencias, gestión de turnos y
+    acceso controlado a consultas e historia clínica.
 servers:
   - url: http://localhost:4000/api/v1
     description: Desarrollo local
@@ -14,6 +14,7 @@ tags:
   - name: Patients
   - name: Scheduling
   - name: Appointments
+  - name: Clinical
   - name: Operations
 paths:
   /health/live:
@@ -829,6 +830,271 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /consultations:
+    get:
+      tags: [Clinical]
+      operationId: listConsultations
+      summary: Listar atenciones clínicas autorizadas
+      description: |
+        Pacientes consultan solo sus atenciones. Profesionales consultan solo
+        las atenciones que registraron. Los roles administrativos no acceden
+        a datos clínicos.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: from
+          in: query
+          description: Fecha inclusiva inicial.
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Fecha final exclusiva.
+          schema:
+            type: string
+            format: date
+        - name: patientId
+          in: query
+          description: Filtro opcional de paciente, limitado al alcance del profesional autenticado.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Página de atenciones dentro del alcance autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsultationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Clinical]
+      operationId: createConsultation
+      summary: Registrar una atención médica
+      description: |
+        Solo el profesional asignado puede registrar una atención de un turno
+        propio ya iniciado y no cancelado ni marcado como ausente. El registro
+        clínico y el cambio del turno a completed se guardan juntos. Un turno
+        admite una única consulta.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClinicalConsultationInput"
+      responses:
+        "201":
+          description: Atención clínica creada.
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalConsultationDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /consultations/{consultationId}:
+    parameters:
+      - $ref: "#/components/parameters/ConsultationId"
+    get:
+      tags: [Clinical]
+      operationId: getConsultation
+      summary: Consultar una atención clínica
+      description: El paciente propietario y el profesional tratante pueden ver el detalle; administración no tiene acceso.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Detalle clínico, diagnósticos, tratamientos y recetas autorizados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicalConsultationDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /consultations/{consultationId}/diagnoses:
+    parameters:
+      - $ref: "#/components/parameters/ConsultationId"
+    post:
+      tags: [Clinical]
+      operationId: addConsultationDiagnosis
+      summary: Agregar un diagnóstico a una atención
+      description: Solo el profesional autor de la atención puede agregar diagnósticos.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosisInput"
+      responses:
+        "201":
+          description: Diagnóstico agregado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Diagnosis"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /consultations/{consultationId}/treatments:
+    parameters:
+      - $ref: "#/components/parameters/ConsultationId"
+    post:
+      tags: [Clinical]
+      operationId: addConsultationTreatment
+      summary: Registrar un tratamiento
+      description: Solo el profesional autor de la atención puede registrar tratamientos.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TreatmentInput"
+      responses:
+        "201":
+          description: Tratamiento agregado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Treatment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /consultations/{consultationId}/prescriptions:
+    parameters:
+      - $ref: "#/components/parameters/ConsultationId"
+    post:
+      tags: [Clinical]
+      operationId: createConsultationPrescription
+      summary: Emitir una receta
+      description: Solo el profesional autor de la atención puede emitir recetas; el número lo genera el servidor.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrescriptionInput"
+      responses:
+        "201":
+          description: Receta emitida con sus medicamentos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prescription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /patients/{patientId}/medical-history:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    get:
+      tags: [Clinical]
+      operationId: getPatientMedicalHistory
+      summary: Consultar el historial clínico
+      description: |
+        El paciente solo puede consultar su propio historial. Un profesional
+        solo puede consultar las atenciones que registró para un paciente con
+        quien mantiene una relación asistencial. Administración no tiene acceso.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Página del historial dentro del alcance autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsultationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -873,6 +1139,13 @@ components:
       schema:
         type: string
         minLength: 1
+    ConsultationId:
+      name: consultationId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[1-9][0-9]{0,9}$"
   responses:
     BadRequest:
       description: Request mal formado.
@@ -1255,6 +1528,358 @@ components:
           type: integer
         totalItems:
           type: integer
+    ClinicalConsultationInput:
+      type: object
+      additionalProperties: false
+      required: [appointmentId, type]
+      properties:
+        appointmentId:
+          type: string
+          description: Turno ya iniciado y asignado al profesional autenticado.
+        type:
+          type: string
+          enum: [programada, espontanea, urgencia, control]
+        reason:
+          type: string
+          maxLength: 5000
+        primaryDiagnosis:
+          type: string
+          maxLength: 5000
+        secondaryDiagnosis:
+          type: string
+          maxLength: 5000
+        observations:
+          type: string
+          maxLength: 10000
+        systolicPressure:
+          type: integer
+          minimum: 40
+          maximum: 300
+        diastolicPressure:
+          type: integer
+          minimum: 20
+          maximum: 200
+        weight:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 500
+        height:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 3
+        temperature:
+          type: number
+          minimum: 25
+          maximum: 45
+        heartRate:
+          type: integer
+          minimum: 20
+          maximum: 300
+    ClinicalConsultation:
+      type: object
+      required: [id, patient, doctor, specialty, consultationDate]
+      properties:
+        id:
+          type: string
+        appointmentId:
+          type: string
+        patient:
+          type: object
+          additionalProperties: false
+          required: [id, displayName]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+        doctor:
+          type: object
+          additionalProperties: false
+          required: [id, displayName]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+        specialty:
+          $ref: "#/components/schemas/SpecialtySummary"
+        consultationDate:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [programada, espontanea, urgencia, control]
+        reason:
+          type: string
+        primaryDiagnosis:
+          type: string
+        secondaryDiagnosis:
+          type: string
+        observations:
+          type: string
+        systolicPressure:
+          type: integer
+        diastolicPressure:
+          type: integer
+        weight:
+          type: number
+        height:
+          type: number
+        temperature:
+          type: number
+        heartRate:
+          type: integer
+    ClinicalConsultationDetail:
+      type: object
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/ClinicalConsultation"
+        - type: object
+          required: [diagnoses, treatments, prescriptions]
+          properties:
+            diagnoses:
+              type: array
+              items:
+                $ref: "#/components/schemas/Diagnosis"
+            treatments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Treatment"
+            prescriptions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Prescription"
+    ConsultationPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClinicalConsultation"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+    DiagnosisInput:
+      type: object
+      additionalProperties: false
+      required: [name, diagnosisDate]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          type: string
+          maxLength: 10
+        diagnosisDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [activo, controlado, resuelto, cronico, en_remision]
+        notes:
+          type: string
+          maxLength: 5000
+        primary:
+          type: boolean
+    Diagnosis:
+      type: object
+      additionalProperties: false
+      required: [id, name, diagnosisDate, primary]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        code:
+          type: string
+          maxLength: 10
+        diagnosisDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [activo, controlado, resuelto, cronico, en_remision]
+        notes:
+          type: string
+          maxLength: 5000
+        primary:
+          type: boolean
+    TreatmentInput:
+      type: object
+      additionalProperties: false
+      required: [name, startDate]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        dose:
+          type: string
+          maxLength: 100
+        frequency:
+          type: string
+          maxLength: 100
+        route:
+          type: string
+          maxLength: 50
+        durationDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+    Treatment:
+      type: object
+      additionalProperties: false
+      required: [id, name, startDate, active]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        dose:
+          type: string
+          maxLength: 100
+        frequency:
+          type: string
+          maxLength: 100
+        route:
+          type: string
+          maxLength: 50
+        durationDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+    PrescriptionInput:
+      type: object
+      additionalProperties: false
+      required: [validUntil, items]
+      properties:
+        validUntil:
+          type: string
+          format: date
+        generalInstructions:
+          type: string
+          maxLength: 5000
+        items:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/PrescriptionItemInput"
+    PrescriptionItemInput:
+      type: object
+      additionalProperties: false
+      required: [medicationName, dose, frequency]
+      properties:
+        medicationName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        concentration:
+          type: string
+          maxLength: 50
+        dose:
+          type: string
+          minLength: 1
+          maxLength: 100
+        frequency:
+          type: string
+          minLength: 1
+          maxLength: 100
+        duration:
+          type: string
+          maxLength: 50
+        quantityUnits:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        instructions:
+          type: string
+          maxLength: 1000
+    Prescription:
+      type: object
+      additionalProperties: false
+      required: [id, number, issueDate, validUntil, items]
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        issueDate:
+          type: string
+          format: date
+        validUntil:
+          type: string
+          format: date
+        generalInstructions:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrescriptionItem"
+    PrescriptionItem:
+      type: object
+      additionalProperties: false
+      required: [id, medicationName, dose, frequency]
+      properties:
+        id:
+          type: string
+        medicationName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        concentration:
+          type: string
+          maxLength: 50
+        dose:
+          type: string
+          minLength: 1
+          maxLength: 100
+        frequency:
+          type: string
+          minLength: 1
+          maxLength: 100
+        duration:
+          type: string
+          maxLength: 50
+        quantityUnits:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        instructions:
+          type: string
+          maxLength: 1000
     ValidationIssue:
       type: object
       additionalProperties: false
