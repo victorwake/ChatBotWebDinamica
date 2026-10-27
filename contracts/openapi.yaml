@@ -1,0 +1,1061 @@
+openapi: 3.1.0
+info:
+  title: Sistema Médico API
+  version: 1.0.0
+  description: |
+    Contrato HTTP independiente de la tecnología del backend.
+    Esta versión define el MVP: sesión, pacientes, referencias para turnos
+    y gestión básica de turnos. No incluye historia clínica.
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Desarrollo local
+tags:
+  - name: Authentication
+  - name: Patients
+  - name: Scheduling
+  - name: Appointments
+  - name: Operations
+paths:
+  /health/live:
+    get:
+      tags: [Operations]
+      operationId: getLiveness
+      summary: Comprobar que el proceso HTTP está activo
+      responses:
+        "200":
+          description: El proceso está activo.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+              example:
+                status: ok
+  /health/ready:
+    get:
+      tags: [Operations]
+      operationId: getReadiness
+      summary: Comprobar que el backend puede atender requests
+      description: Devuelve 503 si la conexión MySQL no está disponible.
+      responses:
+        "200":
+          description: Backend y MySQL disponibles.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, dependencies]
+                properties:
+                  status:
+                    type: string
+                    const: ready
+                  dependencies:
+                    type: object
+                    required: [database]
+                    properties:
+                      database:
+                        type: string
+                        const: ok
+              example:
+                status: ready
+                dependencies:
+                  database: ok
+        "503":
+          description: Backend no listo por falta de conexión a MySQL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/csrf:
+    get:
+      tags: [Authentication]
+      operationId: getCsrfToken
+      summary: Obtener token CSRF
+      description: |
+        Devuelve un token vinculado al contexto de sesión previo a autenticación.
+        El cliente debe enviarlo en X-CSRF-Token para login y operaciones que
+        modifican estado. El token no es una credencial de autenticación.
+      responses:
+        "200":
+          description: Token emitido y vinculado al contexto actual del navegador.
+          headers:
+            Set-Cookie:
+              description: Cookie de contexto CSRF opaca; HttpOnly, SameSite=Lax y Secure en producción.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [csrfToken]
+                properties:
+                  csrfToken:
+                    type: string
+                    minLength: 32
+              example:
+                csrfToken: synthetic-csrf-token-for-documentation-only
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Iniciar sesión
+      description: |
+        Las cuentas del MVP son provisionadas por personal autorizado.
+        El auto-registro y la recuperación de contraseña quedan fuera del MVP.
+        En éxito, el servidor establece una cookie de sesión HttpOnly y devuelve
+        el usuario autenticado. No devuelve el valor de la cookie en el JSON.
+        El token CSRF preautenticación se invalida al iniciar sesión; el cliente
+        debe obtener un token nuevo antes de la siguiente operación de escritura.
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                password:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+            example:
+              email: paciente@example.test
+              password: synthetic-password
+      responses:
+        "200":
+          description: Sesión iniciada.
+          headers:
+            Set-Cookie:
+              description: Cookie de sesión HttpOnly; el valor es opaco para el cliente.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+              example:
+                id: usr_demo_patient
+                displayName: Alex Ejemplo
+                email: paciente@example.test
+                roles: [patient]
+                patientId: pat_demo_001
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Cerrar sesión
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        "204":
+          description: Sesión cerrada y cookie invalidada.
+          headers:
+            Set-Cookie:
+              description: Instrucción para expirar la cookie de sesión.
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getCurrentUser
+      summary: Consultar usuario autenticado
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Usuario asociado a la sesión actual.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+              example:
+                id: usr_demo_patient
+                displayName: Alex Ejemplo
+                email: paciente@example.test
+                roles: [patient]
+                patientId: pat_demo_001
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /patients:
+    get:
+      tags: [Patients]
+      operationId: listPatients
+      summary: Listar pacientes
+      description: Solo personal administrativo puede listar pacientes.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: search
+          in: query
+          description: Búsqueda por nombre, apellido o documento.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Página de pacientes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientPage"
+              example:
+                items:
+                  - id: pat_demo_001
+                    firstName: Alex
+                    lastName: Ejemplo
+                    phone: "+54 11 5555-0101"
+                page: 1
+                pageSize: 20
+                totalItems: 1
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Patients]
+      operationId: createPatient
+      summary: Registrar paciente
+      description: Disponible para personal administrativo. No crea una cuenta de acceso.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientInput"
+            example:
+              firstName: Alex
+              lastName: Ejemplo
+              nationalId: "00000001"
+              birthDate: "1990-01-15"
+              phone: "+54 11 5555-0101"
+              email: paciente@example.test
+              address: "Calle de prueba 123"
+      responses:
+        "201":
+          description: Paciente registrado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /patients/{patientId}:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    get:
+      tags: [Patients]
+      operationId: getPatient
+      summary: Consultar paciente
+      description: El paciente solo puede consultar su propio registro.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Detalle administrativo del paciente, sin datos clínicos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+              example:
+                id: pat_demo_001
+                firstName: Alex
+                lastName: Ejemplo
+                nationalId: "00000001"
+                birthDate: "1990-01-15"
+                phone: "+54 11 5555-0101"
+                email: paciente@example.test
+                address: "Calle de prueba 123"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      tags: [Patients]
+      operationId: updatePatient
+      summary: Actualizar datos permitidos del paciente
+      description: El paciente solo puede actualizar su propio teléfono, email y dirección.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientUpdate"
+            example:
+              phone: "+54 11 5555-0102"
+      responses:
+        "200":
+          description: Datos actualizados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /specialties:
+    get:
+      tags: [Scheduling]
+      operationId: listSpecialties
+      summary: Listar especialidades disponibles
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Especialidades activas para reservar turnos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpecialtySummary"
+              example:
+                - id: sp_demo_01
+                  name: Medicina general
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /doctors:
+    get:
+      tags: [Scheduling]
+      operationId: listDoctors
+      summary: Listar profesionales disponibles para turnos
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: specialtyId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profesionales activos y sus especialidades.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DoctorSummary"
+              example:
+                - id: doc_demo_01
+                  displayName: Dra. Ejemplo
+                  specialty:
+                    id: sp_demo_01
+                    name: Medicina general
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments/availability:
+    get:
+      tags: [Appointments]
+      operationId: listAppointmentAvailability
+      summary: Consultar horarios disponibles
+      description: |
+        El servidor calcula los espacios disponibles. Consultar disponibilidad
+        no reserva ni garantiza el espacio; la reserva se confirma al crear el turno.
+        El rango solicitado no puede superar 31 días. En el MVP, los horarios de
+        profesionales se configuran por el operador fuera de esta API; la
+        administración de horarios se incorpora en una fase posterior.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo del rango, con zona horaria.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo del rango, con zona horaria.
+          schema:
+            type: string
+            format: date-time
+        - name: doctorId
+          in: query
+          schema:
+            type: string
+        - name: specialtyId
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Horarios disponibles en el rango solicitado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityPage"
+              example:
+                items:
+                  - id: slot_demo_001
+                    doctor:
+                      id: doc_demo_01
+                      displayName: Dra. Ejemplo
+                    specialty:
+                      id: sp_demo_01
+                      name: Medicina general
+                    startsAt: "2026-11-02T13:00:00Z"
+                    endsAt: "2026-11-02T13:30:00Z"
+                page: 1
+                pageSize: 20
+                totalItems: 1
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments:
+    get:
+      tags: [Appointments]
+      operationId: listAppointments
+      summary: Listar turnos visibles para el usuario
+      description: |
+        Pacientes solo reciben sus propios turnos. Personal administrativo puede
+        filtrar los turnos que gestiona. Los parámetros no amplían los permisos.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: from
+          in: query
+          description: Inicio inclusivo del rango, con zona horaria.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Fin exclusivo del rango, con zona horaria.
+          schema:
+            type: string
+            format: date-time
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppointmentStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Página de turnos autorizados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Appointments]
+      operationId: createAppointment
+      summary: Reservar un horario disponible
+      description: |
+        El paciente reserva para sí mismo. Personal administrativo puede indicar
+        patientId para reservar en nombre de un paciente. El servidor valida
+        nuevamente la disponibilidad y devuelve conflicto si el espacio ya fue tomado.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentInput"
+            example:
+              slotId: slot_demo_001
+              reason: Control de rutina
+      responses:
+        "201":
+          description: Turno solicitado.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Ruta relativa del turno creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments/{appointmentId}:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    get:
+      tags: [Appointments]
+      operationId: getAppointment
+      summary: Consultar un turno
+      description: El paciente solo puede consultar sus propios turnos.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Detalle del turno.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments/{appointmentId}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    post:
+      tags: [Appointments]
+      operationId: confirmAppointment
+      summary: Confirmar un turno solicitado
+      description: Solo personal administrativo puede confirmar turnos solicitados.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      responses:
+        "200":
+          description: Turno confirmado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments/{appointmentId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    post:
+      tags: [Appointments]
+      operationId: cancelAppointment
+      summary: Cancelar un turno
+      description: El paciente solo puede cancelar sus propios turnos solicitados o confirmados.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+            example:
+              reason: No podré asistir
+      responses:
+        "200":
+          description: Turno cancelado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Cookie opaca HttpOnly establecida por el servidor.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token entregado por GET /auth/csrf.
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Número de página, empezando en 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: Resultados por página.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    PatientId:
+      name: patientId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    AppointmentId:
+      name: appointmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    BadRequest:
+      description: Request mal formado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: BAD_REQUEST
+              message: El request no tiene un formato válido.
+              requestId: req_demo_001
+    Unauthorized:
+      description: Falta autenticación o la sesión expiró.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: UNAUTHENTICATED
+              message: Iniciá sesión para continuar.
+              requestId: req_demo_002
+    Forbidden:
+      description: La sesión no tiene permiso para esta operación.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Recurso inexistente o no visible para el usuario.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflicto de negocio, como un horario ya reservado.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: SLOT_UNAVAILABLE
+              message: El horario ya no está disponible.
+              requestId: req_demo_003
+    UnprocessableEntity:
+      description: Los datos no cumplen las reglas de validación.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Revisá los datos ingresados.
+              details:
+                - field: from
+                  code: INVALID_RANGE
+              requestId: req_demo_004
+    TooManyRequests:
+      description: Límite de solicitudes excedido.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Error inesperado. El requestId permite soporte sin exponer detalles internos.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    UserRole:
+      type: string
+      enum: [patient, doctor, administrative, administrator]
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, roles]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRole"
+        patientId:
+          type: string
+          description: Presente cuando el usuario tiene perfil de paciente.
+    PatientInput:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, nationalId, birthDate, phone]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        nationalId:
+          type: string
+          minLength: 5
+          maxLength: 20
+        birthDate:
+          type: string
+          format: date
+        phone:
+          type: string
+          minLength: 5
+          maxLength: 30
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        address:
+          type: string
+          maxLength: 300
+    PatientUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        phone:
+          type: string
+          minLength: 5
+          maxLength: 30
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        address:
+          type: string
+          maxLength: 300
+    PatientSummary:
+      type: object
+      additionalProperties: false
+      required: [id, firstName, lastName]
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+    Patient:
+      allOf:
+        - $ref: "#/components/schemas/PatientSummary"
+        - type: object
+          required: [nationalId, birthDate]
+          properties:
+            nationalId:
+              type: string
+            birthDate:
+              type: string
+              format: date
+            email:
+              type: string
+              format: email
+            address:
+              type: string
+    PatientPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PatientSummary"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+    SpecialtySummary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    DoctorSummary:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, specialty]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        specialty:
+          $ref: "#/components/schemas/SpecialtySummary"
+    AvailabilitySlot:
+      type: object
+      additionalProperties: false
+      required: [id, doctor, specialty, startsAt, endsAt]
+      properties:
+        id:
+          type: string
+          description: Identificador opaco del espacio; no es una reserva confirmada.
+        doctor:
+          type: object
+          required: [id, displayName]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+        specialty:
+          $ref: "#/components/schemas/SpecialtySummary"
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+    AvailabilityPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilitySlot"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+    AppointmentStatus:
+      type: string
+      enum: [requested, confirmed, cancelled, completed]
+    AppointmentInput:
+      type: object
+      additionalProperties: false
+      required: [slotId]
+      properties:
+        slotId:
+          type: string
+        patientId:
+          type: string
+          description: Solo personal administrativo puede reservar en nombre de otro paciente.
+        reason:
+          type: string
+          maxLength: 500
+    Appointment:
+      type: object
+      additionalProperties: false
+      required:
+        [id, patient, doctor, specialty, startsAt, endsAt, status, createdAt]
+      properties:
+        id:
+          type: string
+        patient:
+          type: object
+          required: [id, displayName]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+        doctor:
+          type: object
+          required: [id, displayName]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+        specialty:
+          $ref: "#/components/schemas/SpecialtySummary"
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/AppointmentStatus"
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    AppointmentPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Appointment"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+    ValidationIssue:
+      type: object
+      additionalProperties: false
+      required: [field, code]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                $ref: "#/components/schemas/ValidationIssue"
+            requestId:
+              type: string

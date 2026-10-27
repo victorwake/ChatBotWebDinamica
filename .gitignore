@@ -19,6 +19,7 @@ node_modules
 
 # production
 /build
+server/dist/
 
 # misc
 .DS_Store
@@ -43,6 +44,9 @@ next-env.d.ts
 
 # scripts mysql
 scripts_mysql/mysql/*
+
+# local database migration scripts are intentionally kept out of Git
+server/migrations/*.sql
 
 # docs
 docs/

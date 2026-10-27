@@ -14,8 +14,13 @@ Sistema de gestión médica con chat inteligente (Gemini + fallback por keywords
 npm install
 
 # Dependencias del backend (Express)
-cd server && npm install && cd ..
+cd server
+npm install
+Copy-Item .env.example .env
+cd ..
 ```
+
+Antes de iniciar el backend, completá las variables `DB_*` de `server/.env` con una base MySQL disponible. El servidor ahora valida su configuración y no inicia si faltan valores requeridos. Las migraciones se ejecutan explícitamente desde `server/` con `npm run migrate`; no se aplican al iniciar el servicio. Los archivos SQL de migración se mantienen locales y no se suben a Git.
 
 ### Modelo de IA (opcional)
 
