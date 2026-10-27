@@ -1,11 +1,5 @@
-import FeaturePlaceholder from "@/components/ui/FeaturePlaceholder"
+import AppointmentList from "@/components/appointments/AppointmentList"
 
 export default function AppointmentsPage() {
-  return (
-    <FeaturePlaceholder
-      title="La gestión de turnos aún no está conectada"
-      description="La disponibilidad y las reservas se mostrarán cuando la interfaz esté conectada a las respuestas de la API."
-      phase="Fase 3 · Pacientes y turnos"
-    />
-  )
+  return <AppointmentList />
 }

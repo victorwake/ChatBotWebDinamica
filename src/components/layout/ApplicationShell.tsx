@@ -29,6 +29,9 @@ export default function ApplicationShell({
           ...(user.roles.some((role) => role !== "administrator")
             ? [{ href: "/appointments", label: "Turnos" }]
             : []),
+          ...(user.roles.includes("administrative")
+            ? [{ href: "/appointments/manage", label: "Gestión de turnos" }]
+            : []),
           { href: "/profile", label: "Mi perfil" },
         ]
       : []),

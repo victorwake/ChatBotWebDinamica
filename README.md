@@ -52,7 +52,9 @@ Abrí `http://localhost:3000` en el navegador.
 
 ## Navegación
 
-La aplicación ofrece Acceso con sesión basada en cookie HttpOnly, consulta del perfil autenticado, cierre de sesión y un panel con contenido adaptado a los roles. Las rutas Panel, Perfil, Pacientes y Turnos requieren una sesión válida; los módulos de pacientes/turnos siguen pendientes de sus fases funcionales.
+La aplicación ofrece Acceso con sesión basada en cookie HttpOnly, consulta del perfil autenticado, cierre de sesión y un panel con contenido adaptado a los roles. El chatbot permanece montado al navegar entre rutas y conserva la conversación en memoria.
+
+Pacientes, coberturas y turnos consumen las rutas `/api/v1`: el personal administrativo puede buscar/registrar pacientes y gestionar turnos; cada paciente puede consultar sus propios datos y coberturas, solicitar turnos y seguir su estado. Disponibilidad, paginación, estados y permisos vienen de la API. El contrato aún no ofrece catálogo de prestadores para coberturas, por lo que la interfaz pide el ID asignado por el consultorio. No hay cuentas de prueba incorporadas; se necesita una cuenta provisionada por el backend.
 
 ## Validación del frontend
 

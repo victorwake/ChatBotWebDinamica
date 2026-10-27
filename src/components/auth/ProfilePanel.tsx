@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useSession } from "@/contexts/SessionContext"
 import { getRoleLabel } from "@/lib/session"
 
@@ -32,7 +33,11 @@ export default function ProfilePanel() {
         {user.patientId && (
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Perfil de paciente</dt>
-            <dd className="mt-1 break-all text-sm font-medium text-slate-800">{user.patientId}</dd>
+            <dd className="mt-1 break-all text-sm font-medium text-slate-800">
+              <Link href={`/patients/${encodeURIComponent(user.patientId)}`} className="text-teal-800 underline underline-offset-2">
+                Ver datos y coberturas
+              </Link>
+            </dd>
           </div>
         )}
       </dl>

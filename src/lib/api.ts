@@ -105,12 +105,20 @@ async function sendRequest(url: string, init: RequestInit): Promise<Response> {
   const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal
 
   try {
-    return await fetch(url, {
+    const response = await fetch(url, {
       ...init,
       signal,
       credentials: "include",
       cache: "no-store",
     })
+    if (
+      response.status === 401
+      && !new URL(url).pathname.endsWith("/auth/login")
+      && typeof window !== "undefined"
+    ) {
+      window.dispatchEvent(new Event("clinic:session-expired"))
+    }
+    return response
   } catch (error) {
     const timedOut = timeoutSignal.aborted && !init.signal?.aborted
     throw new ApiNetworkError(

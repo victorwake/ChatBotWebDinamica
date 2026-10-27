@@ -5,9 +5,9 @@ import { useSession } from "@/contexts/SessionContext"
 import { getRoleLabel, type UserRole } from "@/lib/session"
 
 const roleDescriptions: Record<UserRole, string> = {
-  patient: "Consultá tu perfil y, cuando se habilite la siguiente etapa, tus turnos.",
-  doctor: "El acceso a agenda y atención clínica se habilitará según las siguientes fases.",
-  administrative: "La gestión de pacientes y turnos se habilitará con los módulos correspondientes.",
+  patient: "Consultá tus datos de contacto y coberturas, solicitá turnos y revisá su estado.",
+  doctor: "Consultá los turnos asociados a tu perfil.",
+  administrative: "Gestioná pacientes, coberturas y solicitudes de turnos sin acceso a datos clínicos.",
   administrator: "La administración de cuentas y auditoría se habilitará en su fase específica; este rol no concede acceso clínico.",
 }
 
@@ -19,7 +19,7 @@ const roleLinks: Record<UserRole, { href: string; label: string }[]> = {
   doctor: [{ href: "/appointments", label: "Ir a turnos" }],
   administrative: [
     { href: "/patients", label: "Ir a pacientes" },
-    { href: "/appointments", label: "Ir a turnos" },
+    { href: "/appointments/manage", label: "Gestionar turnos" },
   ],
   administrator: [],
 }

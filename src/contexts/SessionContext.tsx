@@ -76,6 +76,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [refresh])
 
+  useEffect(() => {
+    const expireSession = () => {
+      setUser(null)
+      setError(null)
+      setStatus("unauthenticated")
+    }
+    window.addEventListener("clinic:session-expired", expireSession)
+    return () => window.removeEventListener("clinic:session-expired", expireSession)
+  }, [])
+
   const signIn = useCallback(async (email: string, password: string) => {
     const authenticatedUser = await authenticate(email, password)
     setUser(authenticatedUser)
