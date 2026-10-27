@@ -169,6 +169,30 @@ export async function createPhase3Fixture(): Promise<Phase3Fixture> {
     },
     async cleanup() {
       await withTransaction(async (connection) => {
+        const patientIds = createdAccounts
+          .flatMap((account) => account.patientId === undefined ? [] : [account.patientId])
+        const appointmentPredicates = ["medico_id = ?"]
+        const appointmentValues: number[] = [doctorId]
+        if (patientIds.length > 0) {
+          appointmentPredicates.push(`paciente_id IN (${patientIds.map(() => "?").join(", ")})`)
+          appointmentValues.push(...patientIds)
+        }
+        const [appointments] = await connection.execute<Array<RowDataPacket & { id: number }>>(
+          `SELECT id FROM turnos WHERE ${appointmentPredicates.join(" OR ")}`,
+          appointmentValues,
+        )
+        if (appointments.length > 0) {
+          const appointmentIds = appointments.map((appointment) => appointment.id)
+          const appointmentPlaceholders = appointmentIds.map(() => "?").join(", ")
+          await connection.execute(
+            `DELETE FROM turnos_historial WHERE turno_id IN (${appointmentPlaceholders})`,
+            appointmentIds,
+          )
+          await connection.execute(
+            `DELETE FROM turnos WHERE id IN (${appointmentPlaceholders})`,
+            appointmentIds,
+          )
+        }
         for (const account of createdAccounts) {
           await connection.execute("DELETE FROM auth_sessions WHERE user_id = ?", [account.userId])
           if (account.patientId) {

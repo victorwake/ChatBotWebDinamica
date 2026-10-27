@@ -47,8 +47,8 @@ sus fases.
 
 1. Un usuario autenticado puede consultar especialidades y profesionales activos disponibles para reservar.
 2. Los listados de especialidades y profesionales excluyen registros inactivos; un filtro de especialidad inválido devuelve `422`.
-3. La disponibilidad requiere un rango válido y no mayor a 31 días; rangos inválidos devuelven `422`.
-4. Los espacios devueltos identifican su intervalo y profesional; una respuesta de disponibilidad no se interpreta como reserva.
+3. La disponibilidad requiere un rango positivo con zona horaria y no mayor a 31 días; rangos inválidos devuelven `422`.
+4. Los espacios se generan desde horarios y excepciones en `America/Argentina/Buenos_Aires`, excluyen turnos solicitados/confirmados y nunca se interpretan como una reserva.
 
 ## Turnos
 
@@ -56,10 +56,13 @@ sus fases.
 2. Un paciente no puede indicar otro `patientId` al reservar.
 3. Personal administrativo puede reservar en nombre de un paciente existente.
 4. Si el espacio deja de estar disponible antes de reservar, la API devuelve `409` con `error.code = SLOT_UNAVAILABLE`.
-5. Un paciente solo lista y consulta sus turnos; personal administrativo puede consultar los turnos de gestión.
-6. Solo personal administrativo confirma un turno solicitado; una transición inválida devuelve `409`.
-7. El paciente puede cancelar su propio turno solicitado/confirmado, pero no un turno de otro paciente ni uno completado.
-8. Una operación de escritura sin sesión devuelve `401`; sin permiso, `403`; con datos inválidos, `422`.
+5. Solicitudes concurrentes por el mismo espacio permiten una única reserva; las demás devuelven `409` con `error.code = SLOT_UNAVAILABLE`.
+6. Un paciente solo lista y consulta sus turnos; profesionales solo los asociados a su perfil; personal administrativo puede consultar todos los turnos.
+7. Solo personal administrativo confirma un turno solicitado; una transición inválida devuelve `409`.
+8. El paciente puede cancelar o reprogramar su propio turno solicitado/confirmado; personal administrativo puede hacerlo por cualquier paciente.
+9. Los cambios de estado, reservas y reprogramaciones se registran en el historial dentro de la misma transacción.
+10. Turnos completados y ausentes se devuelven como `completed` y `no_show`; no se permiten transiciones desde estados terminales.
+11. Una operación de escritura sin sesión devuelve `401`; sin permiso, `403`; con datos inválidos, `422`.
 
 ## Reglas comunes de verificación
 

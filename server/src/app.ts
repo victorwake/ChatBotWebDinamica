@@ -4,6 +4,7 @@ import { config } from "./config"
 import { errorHandler } from "./middleware/error-handler"
 import { requestContext } from "./middleware/request-context"
 import authV1Routes from "./routes/auth-v1"
+import appointmentsV1Routes from "./routes/appointments-v1"
 import appointmentsRoutes from "./routes/appointments"
 import authRoutes from "./routes/auth"
 import healthRoutes from "./routes/health"
@@ -19,6 +20,7 @@ app.use(express.json({ limit: "1mb" }))
 
 app.use("/api/v1/health", healthRoutes)
 app.use("/api/v1/auth", authV1Routes)
+app.use("/api/v1/appointments", appointmentsV1Routes)
 app.use("/api/v1/patients", patientsV1Routes)
 app.use("/api/v1", referencesV1Routes)
 

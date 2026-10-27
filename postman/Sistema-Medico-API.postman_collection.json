@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
     "name": "Sistema Médico API",
-    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementadas la autenticación, pacientes, coberturas y referencias; los turnos se completan en la fase siguiente.",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementados autenticación, pacientes, coberturas, referencias y turnos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -326,7 +326,7 @@
     },
     {
       "name": "20 - Rol paciente (contrato v1)",
-      "description": "Pacientes, coberturas y referencias están implementados. Los turnos se completan en la fase siguiente. Ejecutá la carpeta en orden para probar la sesión y los permisos.",
+      "description": "Pacientes, coberturas, referencias y turnos están implementados. Ejecutá la carpeta en orden para probar la sesión y los permisos.",
       "item": [
         {
           "name": "Obtener CSRF para login paciente",
@@ -374,6 +374,26 @@
                   "const body = pm.response.json();",
                   "pm.test('La cuenta tiene rol patient', function () { pm.expect(body.roles).to.include('patient'); });",
                   "if (body.patientId) pm.collectionVariables.set('patientId', body.patientId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener CSRF autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF autenticado disponible', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
                 ]
               }
             }
@@ -563,6 +583,98 @@
           ]
         },
         {
+          "name": "Consultar disponibilidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments/availability?from={{availabilityFrom}}&to={{availabilityTo}}&page=1&pageSize=20",
+            "description": "Genera automáticamente un rango futuro de 30 días. Requiere que haya horarios semanales activos configurados."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('availabilityFrom', new Date().toISOString());",
+                  "pm.collectionVariables.set('availabilityTo', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consulta de disponibilidad responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Disponibilidad paginada', function () { pm.expect(body.items).to.be.an('array'); pm.expect(body).to.have.property('totalItems'); });",
+                  "if (body.items && body.items.length > 0) pm.collectionVariables.set('slotId', body.items[0].id);",
+                  "if (body.items && body.items.length > 1) pm.collectionVariables.set('alternativeSlotId', body.items[1].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reservar turno propio",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\",\n  \"reason\": \"Turno de prueba Postman\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments",
+            "description": "Ejecutar Consultar disponibilidad y Obtener CSRF autenticado antes. La reserva persiste y se guarda como appointmentId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Reserva turno propio', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "if (body.id) pm.collectionVariables.set('appointmentId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reprogramar turno propio",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{alternativeSlotId}}\",\n  \"reason\": \"Reprogramación de prueba Postman\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments/{{appointmentId}}/reschedule",
+            "description": "Ejecutar tras Reservar turno propio; requiere que disponibilidad haya devuelto al menos dos espacios."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Reprograma turno propio', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Listar mis turnos",
           "request": {
             "method": "GET",
@@ -613,7 +725,7 @@
     },
     {
       "name": "30 - Rol administrativo (contrato v1)",
-      "description": "El login, pacientes y referencias están implementados. Los turnos se completan en la fase siguiente. Ejecutá la carpeta en orden para probar la sesión.",
+      "description": "El login, pacientes, referencias y turnos están implementados. Ejecutá la carpeta en orden para probar la sesión.",
       "item": [
         {
           "name": "Obtener CSRF para login administrativo",
@@ -660,6 +772,26 @@
                   "pm.test('Login administrativo responde 200', function () { pm.response.to.have.status(200); });",
                   "const body = pm.response.json();",
                   "pm.test('La cuenta tiene rol administrativo', function () { pm.expect(body.roles.some(function (role) { return ['administrative', 'administrator'].includes(role); })).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener CSRF autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF autenticado disponible', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
                 ]
               }
             }
@@ -819,6 +951,26 @@
           ]
         },
         {
+          "name": "Obtener CSRF autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF autenticado disponible', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Consultar sesión profesional",
           "request": {
             "method": "GET",
@@ -870,6 +1022,25 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Profesional autenticado consulta profesionales', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar turnos del profesional",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profesional consulta solo su agenda', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
                 ]
               }
             }

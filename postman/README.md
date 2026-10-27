@@ -21,7 +21,9 @@ backend escucha en otro host o puerto.
   implementados.
 - **20, 30 y 40 - Roles v1**: cada carpeta inicia automáticamente sesión con
   las credenciales de su rol. Las rutas de pacientes, coberturas y referencias
-  ya están implementadas; las rutas de turnos aún pueden devolver `404`.
+  están implementadas. La Fase 4 implementa disponibilidad, reservas y
+  transiciones de turnos; probalas con
+  profesionales que tengan horarios semanales activos.
 
 Las rutas demo actuales no emiten cookies ni tokens y no implementan permisos.
 Para probar autenticación real, usá las rutas `/api/v1/auth` y las cuentas
@@ -53,7 +55,9 @@ Las requests de creación/actualización pueden persistir datos. Usalas solo
 contra una base local de pruebas y elegí un `testNationalId` único. Para probar
 coberturas, configurá `coverageProviderId` con el ID de una cobertura activa
 existente en la base; el backend no publica un catálogo administrativo de
-proveedores en esta fase.
+proveedores en esta fase. Para probar turnos, usá un profesional con horario
+semanal activo en `America/Argentina/Buenos_Aires` y un rango futuro de hasta
+31 días.
 
 ## Orden sugerido
 

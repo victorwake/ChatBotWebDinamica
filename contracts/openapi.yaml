@@ -538,6 +538,11 @@ paths:
         El rango solicitado no puede superar 31 días. En el MVP, los horarios de
         profesionales se configuran por el operador fuera de esta API; la
         administración de horarios se incorpora en una fase posterior.
+        Los horarios almacenados se interpretan en America/Argentina/Buenos_Aires;
+        los instantes de entrada y salida se expresan en ISO 8601 con offset.
+        Las excepciones de día completo bloquean la agenda; un bloqueo con horas
+        excluye ese intervalo, mientras que una excepción de tipo cambio reemplaza
+        la agenda semanal de ese profesional para la fecha.
       security:
         - sessionCookie: []
       parameters:
@@ -776,6 +781,51 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /appointments/{appointmentId}/reschedule:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    patch:
+      tags: [Appointments]
+      operationId: rescheduleAppointment
+      summary: Reprogramar un turno
+      description: El paciente solo puede reprogramar sus propios turnos solicitados o confirmados; personal administrativo puede reprogramar cualquier turno.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [slotId]
+              properties:
+                slotId:
+                  type: string
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Turno reprogramado; conserva el estado anterior.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1137,7 +1187,7 @@ components:
           type: integer
     AppointmentStatus:
       type: string
-      enum: [requested, confirmed, cancelled, completed]
+      enum: [requested, confirmed, cancelled, completed, no_show]
     AppointmentInput:
       type: object
       additionalProperties: false

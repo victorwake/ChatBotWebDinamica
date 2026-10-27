@@ -11,7 +11,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "migrate:prod": "node --env-file=.env dist/src/db/migrate.js",
     "migrate:baseline": "tsx src/db/baseline.ts",
-    "test": "npm run build && node --test dist/test/*.test.js"
+    "test": "npm run build && node --test --test-concurrency=1 dist/test/*.test.js"
   },
   "dependencies": {
     "argon2": "^0.45.1",
