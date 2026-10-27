@@ -3,6 +3,7 @@ import express from "express"
 import { config } from "./config"
 import { errorHandler } from "./middleware/error-handler"
 import { requestContext } from "./middleware/request-context"
+import administrationV1Routes from "./routes/administration-v1"
 import authV1Routes from "./routes/auth-v1"
 import appointmentsV1Routes from "./routes/appointments-v1"
 import consultationsV1Routes from "./routes/consultations-v1"
@@ -21,6 +22,7 @@ app.use(express.json({ limit: "1mb" }))
 
 app.use("/api/v1/health", healthRoutes)
 app.use("/api/v1/auth", authV1Routes)
+app.use("/api/v1", administrationV1Routes)
 app.use("/api/v1/appointments", appointmentsV1Routes)
 app.use("/api/v1", consultationsV1Routes)
 app.use("/api/v1/patients", patientsV1Routes)

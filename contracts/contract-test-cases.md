@@ -76,6 +76,16 @@ sus fases.
 8. Las listas están paginadas y filtradas por fechas sin que parámetros enviados por el cliente amplíen el alcance de autorización.
 9. Logs y errores no incluyen contenido clínico, SQL, credenciales ni stack traces.
 
+## Administración y auditoría
+
+1. Solo el rol `administrator` puede listar, consultar o actualizar cuentas y consultar eventos de auditoría; `administrative`, pacientes y profesionales reciben `403`.
+2. Los listados de cuentas están paginados y solo contienen identidad administrativa mínima, estado de cuenta y roles; nunca incluyen hashes, credenciales ni datos clínicos.
+3. Las escrituras requieren sesión y CSRF válido. Los roles deben pertenecer al contrato y no pueden repetirse; los filtros y cuerpos inválidos devuelven `422`.
+4. Cambios de estado y roles persisten en una transacción y quedan auditados con actor, acción, recurso y fecha.
+5. La respuesta de auditoría no devuelve snapshots de cambios, correo, IP, agente de usuario, credenciales ni datos clínicos.
+6. La última cuenta administradora activa no puede desactivarse ni perder el rol de administrador; un administrador tampoco puede quitarse a sí mismo ese rol o desactivar su cuenta.
+7. El alta de cuentas y la configuración inicial de credenciales siguen el procedimiento privado de provisión; no se aceptan contraseñas mediante los endpoints administrativos.
+
 ## Reglas comunes de verificación
 
 - Los errores siguen `ErrorResponse` y tienen `requestId`; nunca contienen SQL, stack traces, secretos ni datos clínicos.

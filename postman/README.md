@@ -27,6 +27,9 @@ backend escucha en otro host o puerto.
 - **Atención clínica - Fase 5**: pacientes consultan su historial propio. La
   carpeta profesional agrega una atención solo para un turno propio iniciado,
   y luego permite consultar detalle y agregar un diagnóstico de prueba.
+- **50 - Rol administrador del sistema (Fase 6)**: gestión paginada de cuentas,
+  consulta de auditoría minimizada y actualización de una cuenta sintética.
+  Requiere `administrator`; una cuenta con solo `administrative` recibe `403`.
 
 Las rutas demo actuales no emiten cookies ni tokens y no implementan permisos.
 Para probar autenticación real, usá las rutas `/api/v1/auth` y las cuentas
@@ -53,6 +56,11 @@ para los roles `patient`, `administrative`/`administrator` y `doctor`. Las
 cuentas deben existir en el backend; no se crean mediante la colección. No
 guardes contraseñas reales en la colección, en este archivo exportado ni en
 Git. En Postman, mantené los valores sensibles solo en tu entorno local.
+Para la carpeta Fase 6 configurá `administratorEmail` y
+`administratorPassword` con una cuenta cuyo rol sea específicamente
+`administrator`; `managedUserId` debe apuntar a una cuenta sintética. La request
+de actualización desactiva esa cuenta y reemplaza sus roles, así que no la
+ejecutes contra cuentas reales ni contra la cuenta administradora.
 
 Las requests de creación/actualización pueden persistir datos. Usalas solo
 contra una base local de pruebas y elegí un `testNationalId` único. Para probar

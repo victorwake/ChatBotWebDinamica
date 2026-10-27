@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
     "name": "Sistema Médico API",
-    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementados autenticación, pacientes, coberturas, referencias, turnos y operaciones clínicas protegidas.",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Están implementados autenticación, pacientes, coberturas, referencias, turnos, operaciones clínicas y administración protegida.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1116,6 +1116,166 @@
           "event": [
             { "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.collectionVariables.set('clinicalValidUntil', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));"] } },
             { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Receta emitida', function () { pm.response.to.have.status(201); });"] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "50 - Rol administrador del sistema (Fase 6)",
+      "description": "Estas operaciones requieren una cuenta con el rol administrator (no alcanza con administrative). Para cambios, usar únicamente una cuenta sintética de una base local.",
+      "item": [
+        {
+          "name": "Obtener CSRF para login administrador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF pre-login disponible', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrador del sistema",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{administratorEmail}}\",\n  \"password\": \"{{administratorPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login administrador responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('La cuenta tiene rol administrator', function () { pm.expect(pm.response.json().roles).to.include('administrator'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener CSRF autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF autenticado disponible', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar cuentas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/users?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista de cuentas paginada', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar cuenta por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/users/{{managedUserId}}",
+            "description": "Configurar managedUserId con el ID de una cuenta sintética para consultar su estado y roles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Detalle de cuenta accesible', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar auditoría de cuentas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/audit-logs?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Auditoría paginada y minimizada', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado y roles de cuenta sintética",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false,\n  \"roles\": [\"doctor\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/users/{{managedUserId}}",
+            "description": "Persistente: desactiva la cuenta y reemplaza sus roles. Ejecutar solo con managedUserId de una cuenta sintética local; no usar la cuenta administradora ni una cuenta real."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cuenta sintética actualizada', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().active).to.eql(false); });"
+                ]
+              }
+            }
           ]
         }
       ]

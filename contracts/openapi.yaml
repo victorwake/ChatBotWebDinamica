@@ -15,6 +15,7 @@ tags:
   - name: Scheduling
   - name: Appointments
   - name: Clinical
+  - name: Administration
   - name: Operations
 paths:
   /health/live:
@@ -209,6 +210,168 @@ paths:
                 patientId: pat_demo_001
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users:
+    get:
+      tags: [Administration]
+      operationId: listAccounts
+      summary: Listar cuentas de usuario
+      description: Solo el rol administrator puede consultar cuentas; no incluye credenciales ni datos clínicos.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: role
+          in: query
+          schema:
+            $ref: "#/components/schemas/UserRole"
+        - name: active
+          in: query
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Página de cuentas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Administration]
+      operationId: getAccount
+      summary: Consultar una cuenta
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Datos administrativos mínimos de la cuenta.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      tags: [Administration]
+      operationId: updateAccount
+      summary: Actualizar estado o roles de una cuenta
+      description: |
+        Solo el rol administrator puede cambiar el estado o los roles. La última
+        cuenta administradora activa no puede desactivarse ni perder ese rol.
+        No permite crear cuentas ni establecer contraseñas; el alta y la
+        habilitación de credenciales se realizan por el procedimiento privado
+        de provisión de cuentas.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountUpdateInput"
+      responses:
+        "200":
+          description: Cuenta actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /audit-logs:
+    get:
+      tags: [Administration]
+      operationId: listAuditLogs
+      summary: Consultar auditoría de administración de cuentas
+      description: |
+        Solo el rol administrator puede consultar estos eventos. La respuesta
+        contiene actor, acción, tipo/referencia de recurso y fecha; excluye
+        snapshots, credenciales, datos personales y contenido clínico.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: actorId
+          in: query
+          schema:
+            type: string
+            pattern: "^[1-9][0-9]{0,9}$"
+        - name: action
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: resourceId
+          in: query
+          schema:
+            type: string
+            pattern: "^[1-9][0-9]{0,9}$"
+        - name: from
+          in: query
+          description: Fecha inicial inclusiva, YYYY-MM-DD.
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: Fecha final inclusiva, YYYY-MM-DD.
+          schema:
+            type: string
+            format: date
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Página de eventos de gestión de cuentas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1139,6 +1302,13 @@ components:
       schema:
         type: string
         minLength: 1
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[1-9][0-9]{0,9}$"
     ConsultationId:
       name: consultationId
       in: path
@@ -1241,6 +1411,87 @@ components:
         patientId:
           type: string
           description: Presente cuando el usuario tiene perfil de paciente.
+    Account:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, active, roles]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        active:
+          type: boolean
+          description: Estado de la cuenta; el acceso también requiere que el perfil asociado esté activo.
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRole"
+    AccountPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+    AccountUpdateInput:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        active:
+          type: boolean
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/UserRole"
+    AuditLog:
+      type: object
+      additionalProperties: false
+      required: [id, actorId, action, resourceType, occurredAt]
+      properties:
+        id:
+          type: string
+        actorId:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+          const: user
+        resourceId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    AuditLogPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
     PatientInput:
       type: object
       additionalProperties: false

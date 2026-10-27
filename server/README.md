@@ -49,3 +49,11 @@ El logout invalida la sesión en MySQL y expira la cookie. `/api/v1/auth/me` vue
 ## Datos clínicos de fase 5
 
 `/api/v1/consultations` permite a un profesional registrar una atención únicamente para un turno propio iniciado, y guarda el cambio del turno a `completed` en la misma transacción. El profesional puede asociar diagnósticos, tratamientos y recetas a sus consultas. Los pacientes solo pueden consultar su propio historial y los profesionales solo sus atenciones y relaciones asistenciales; los roles administrativos no tienen acceso a endpoints clínicos. No registrar datos reales en ambientes de prueba. `npm test` usa datos clínicos sintéticos y limpia los registros que crea.
+
+## Administración y auditoría de fase 6
+
+Solo el rol `administrator` puede listar y consultar cuentas, cambiar su estado o roles y leer `/api/v1/audit-logs`. El rol de personal administrativo no habilita estas operaciones. Los cambios requieren CSRF y se registran en la misma transacción que la actualización. La última cuenta administradora activa no puede desactivarse ni perder ese rol, y un administrador no puede deshabilitarse ni quitarse a sí mismo el rol.
+
+Las respuestas de auditoría exponen únicamente actor, acción, recurso y fecha; no devuelven snapshots, correos, direcciones IP, agentes de usuario, credenciales ni contenido clínico. Los snapshots internos contienen únicamente el indicador de activación y los nombres de roles anterior/nuevo. El alta de cuentas y la configuración inicial de credenciales siguen siendo parte del procedimiento privado de provisión; la API no acepta ni devuelve contraseñas. El esquema inicial ya incluía almacenamiento para estos eventos, por lo que esta fase no agrega migraciones SQL.
+
+La prueba `server/test/administration-phase6.test.ts` actualiza una cuenta sintética, verifica persistencia y auditoría minimizada y confirma las denegaciones. Ejecutá la suite solo con una base local de pruebas; las fixtures eliminan los eventos sintéticos que crean.
