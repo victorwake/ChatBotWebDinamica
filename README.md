@@ -1,11 +1,11 @@
 # ChatBot Web Dinámica
 
-Sistema de gestión médica con chat inteligente (Gemini + fallback por keywords) y panel de vistas.
+Sistema de gestión médica en Next.js con navegación por rutas y una API HTTP versionada.
 
 ## Requisitos
 
 - Node.js 20+
-- Una API key de [Google AI Studio](https://aistudio.google.com/) (opcional, para modo IA)
+- Una API key de [Google AI Studio](https://aistudio.google.com/) (opcional, para respuestas neutrales del asistente)
 
 ## Instalación
 
@@ -35,7 +35,9 @@ LLM_TIMEOUT_SECONDS=30
 
 La key es solo de servidor: no uses `NEXT_PUBLIC_`.
 
-> Si Gemini no está configurado o falla, el chat funciona en **modo offline** con keyword matching.
+`NEXT_PUBLIC_API_URL` contiene la URL pública del backend, no credenciales. El cliente usa `/api/v1`, incluye cookies, obtiene CSRF para escrituras y muestra los errores de red/HTTP sin convertirlos en datos vacíos.
+
+Los datos sintéticos se desactivan por defecto. Para una demostración local se puede establecer `NEXT_PUBLIC_ENABLE_DEMO_DATA=true`; no habilitarlo en producción. El asistente solo puede enviar a Gemini mensajes neutrales de una lista permitida y nunca incluye el historial de conversación.
 
 ## Uso
 
@@ -48,13 +50,15 @@ El proyecto necesita **dos terminales**:
 
 Abrí `http://localhost:3000` en el navegador.
 
-## Vistas disponibles
+## Navegación
 
-| Vista | Descripción |
-|-------|-------------|
-| `welcome` | Pantalla de inicio |
-| `login` | Formulario de inicio de sesión |
-| `patients` | Listado de pacientes |
-| `patient_detail` | Ficha de un paciente |
-| `appointment` | Gestión de turnos |
-| `report` | Reportes e informes |
+La aplicación ofrece Acceso con sesión basada en cookie HttpOnly, consulta del perfil autenticado, cierre de sesión y un panel con contenido adaptado a los roles. Las rutas Panel, Perfil, Pacientes y Turnos requieren una sesión válida; los módulos de pacientes/turnos siguen pendientes de sus fases funcionales.
+
+## Validación del frontend
+
+```powershell
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```

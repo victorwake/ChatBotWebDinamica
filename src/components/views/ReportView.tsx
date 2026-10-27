@@ -1,4 +1,5 @@
-import type { ViewProps } from "@/types"
+import FeaturePlaceholder from "@/components/ui/FeaturePlaceholder"
+import { demoDataEnabled } from "@/lib/demo-data"
 
 const KPIS = [
   { label: "Consultas del mes", value: "48", hint: "Demo" },
@@ -6,7 +7,17 @@ const KPIS = [
   { label: "Turnos pendientes", value: "3", hint: "Demo" },
 ]
 
-export default function ReportView(_props: ViewProps) {
+export default function ReportView() {
+  if (!demoDataEnabled) {
+    return (
+      <FeaturePlaceholder
+        title="Los informes aún no están disponibles"
+        description="No mostramos métricas de ejemplo como información real."
+        phase="Datos de demostración desactivados"
+      />
+    )
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6">
       <div>

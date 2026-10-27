@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import { SessionProvider } from "@/contexts/SessionContext"
+import PersistentChatbot from "@/components/chatbot/PersistentChatbot"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -27,10 +29,10 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="font-sans flex h-full flex-col">
-        <main className="flex flex-1 flex-col overflow-hidden bg-background">
-          {children}
-        </main>
+      <body className="flex min-h-full flex-col font-sans">
+        <SessionProvider>
+          <PersistentChatbot>{children}</PersistentChatbot>
+        </SessionProvider>
       </body>
     </html>
   )

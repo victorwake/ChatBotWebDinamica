@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import type { Message, Action, ViewType } from "@/types"
 import type { Patient } from "@/data/mockPatients"
-import { mockPatients } from "@/data/mockPatients"
 import { resolveActionAsync, getBotResponse, getDisambiguationMessage, formatHelp, HELP_LABELS } from "@/lib/actionRegistry"
 import type { RegistryAction } from "@/lib/actionRegistry"
 
@@ -42,6 +41,27 @@ function normalizeStr(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 }
 
+const SAFE_LLM_INPUTS = new Set([
+  "hola",
+  "buenas",
+  "buenos dias",
+  "buenas tardes",
+  "buenas noches",
+  "ayuda",
+  "opciones",
+  "comandos",
+  "menu",
+  "gracias",
+  "ok",
+  "perfecto",
+  "entendido",
+])
+
+function isSafeLlmInput(input: string) {
+  const normalized = normalizeStr(input).replace(/[¿?¡!.]/g, "").trim()
+  return SAFE_LLM_INPUTS.has(normalized)
+}
+
 const VALID_VIEWS: ViewType[] = ["welcome", "login", "patients", "patient_detail", "appointment", "report"]
 
 type LlmResponse = {
@@ -67,7 +87,6 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
   const [usingLlm, setUsingLlm] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([])
 
   const updateLlmStatus = useCallback(
     (next: boolean) => {
@@ -92,15 +111,12 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          history: historyRef.current.slice(-10),
         }),
       })
 
       if (!response.ok) return false
 
       const result: LlmResponse = await response.json()
-      historyRef.current.push({ role: "user", content: text })
-      historyRef.current.push({ role: "assistant", content: result.message })
 
       const botMsg: Message = { id: crypto.randomUUID(), role: "bot", text: result.message }
       setMessages((prev) => [...prev, botMsg])
@@ -109,45 +125,20 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
       if (result.view && VALID_VIEWS.includes(result.view)) {
         let actionData = result.data ?? undefined
         if (result.view === "patients") {
-          actionData = { patients: mockPatients }
+          actionData = (await resolveActionAsync("pacientes")).data
         } else if (result.view === "patient_detail" && result.data?.patient) {
-          const name = normalizeStr((result.data.patient as { name?: string }).name ?? "")
-          const matches = mockPatients.filter((p) =>
-            normalizeStr(p.name).includes(name),
-          )
-          if (matches.length === 1) {
-            actionData = { patient: matches[0] }
-          } else if (matches.length > 1) {
-            const action = (await resolveActionAsync(text)) as RegistryAction
-            if (action.view === "patient_detail" && action.data?.patient) {
-              actionData = action.data
-              onAction({ view: "patient_detail", data: actionData })
-              setMessages((prev) => [...prev.slice(0, -1), {
-                id: crypto.randomUUID(), role: "bot",
-                text: getBotResponse(text, action),
-              }])
-            } else {
-              const normalizedInput = normalizeStr(text)
-              const fullMatch = mockPatients.find((p) =>
-                normalizedInput.includes(normalizeStr(p.name)),
-              )
-              if (fullMatch) {
-                actionData = { patient: fullMatch }
-                onAction({ view: "patient_detail", data: actionData })
-                setMessages((prev) => [...prev.slice(0, -1), {
-                  id: crypto.randomUUID(), role: "bot",
-                  text: `Mostrando los detalles de ${fullMatch.name}.`,
-                }])
-              } else {
-                setPendingPatients(matches)
-                setMessages((prev) => [...prev.slice(0, -1), {
-                  id: crypto.randomUUID(), role: "bot",
-                  text: getDisambiguationMessage(matches),
-                }])
-              }
-            }
+          const action = await resolveActionAsync(text)
+          const matches = action.pendingPatients
+          if (matches) {
+            setPendingPatients(matches)
+            setMessages((prev) => [...prev.slice(0, -1), {
+              id: crypto.randomUUID(),
+              role: "bot",
+              text: getDisambiguationMessage(matches),
+            }])
             return true
           }
+          actionData = action.view === "patient_detail" ? action.data : undefined
         }
         onAction({ view: result.view, data: actionData })
       } else {
@@ -177,7 +168,7 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
           if (/credenciales|iniciar sesion|logue[ae]r|acceder|usuario|contraseña|login/i.test(lowerMsg)) {
             onAction({ view: "login" })
           } else if (/listado.*pacientes|pacientes.*registrados|todos los pacientes/i.test(lowerMsg)) {
-            onAction({ view: "patients", data: { patients: mockPatients } })
+            onAction({ view: "patients" })
           } else if (/turno|cita|agendar/i.test(lowerMsg)) {
             onAction({ view: "appointment" })
           } else if (/reporte|informe/i.test(lowerMsg)) {
@@ -233,7 +224,7 @@ export default function Chatbot({ onAction, onLlmStatusChange }: ChatbotProps) {
       return
     }
 
-    if (usingLlm) {
+    if (usingLlm && isSafeLlmInput(text)) {
       const llmHandled = await processLlm(text)
       if (llmHandled) return
       updateLlmStatus(false)

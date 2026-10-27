@@ -1,14 +1,27 @@
 import type { ViewProps } from "@/types"
-import { mockPatients } from "@/data/mockPatients"
+import { demoDataEnabled } from "@/lib/demo-data"
 
 const COMMANDS = [
   { label: "Iniciar sesión", hint: "Acceso al sistema", view: "login" as const },
-  { label: "Ver pacientes", hint: "Listado del consultorio", view: "patients" as const, data: { patients: mockPatients } },
+  {
+    label: "Ver pacientes",
+    hint: "Listado del consultorio",
+    view: "patients" as const,
+  },
   { label: "Agendar turno", hint: "Nueva cita", view: "appointment" as const },
   { label: "Ver informe", hint: "Resumen clínico", view: "report" as const },
 ]
 
 export default function WelcomeView({ onAction }: ViewProps) {
+  async function handleCommand(view: (typeof COMMANDS)[number]["view"]) {
+    if (view === "patients" && demoDataEnabled) {
+      const { mockPatients } = await import("@/data/mockPatients")
+      onAction?.({ view, data: { patients: mockPatients } })
+      return
+    }
+    onAction?.({ view })
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10">
       <div className="max-w-xl">
@@ -26,7 +39,7 @@ export default function WelcomeView({ onAction }: ViewProps) {
           <button
             key={cmd.view}
             type="button"
-            onClick={() => onAction?.({ view: cmd.view, data: cmd.data })}
+            onClick={() => void handleCommand(cmd.view)}
             className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
           >
             <p className="text-sm font-semibold text-slate-800">{cmd.label}</p>

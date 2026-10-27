@@ -1,10 +1,22 @@
 # Casos de aceptación del contrato HTTP
 
-Estos casos verifican comportamiento observable del MVP sin depender del lenguaje,
-framework o base de datos del backend. Los datos y credenciales son ficticios.
-La autenticación `/api/v1/auth` cuenta con pruebas de integración en
-`server/test/auth-flow.test.ts`; los casos de recursos se ejecutan al implementar
-sus fases.
+Estos casos verifican el comportamiento observable del contrato `/api/v1` sin
+depender del lenguaje, framework o base de datos del backend. Incluyen
+capacidades del MVP y de fases posteriores; no implican que todas deban estar en
+la primera entrega de interfaz. Los datos y credenciales son ficticios. La
+autenticación y los recursos cuentan con pruebas de integración en `server/test/`;
+los journeys visuales se implementan en las fases del frontend.
+
+## Frontera del frontend
+
+1. El frontend consume solamente operaciones, DTOs y errores descritos en `openapi.yaml`; no importa lógica, modelos o detalles de persistencia del backend.
+2. Cambiar la implementación del backend por otra compatible con `/api/v1` no debe requerir cambios de componentes ni reglas de negocio del cliente; solo puede cambiar la configuración del origen público de API y configuración de despliegue de cookies/CORS.
+3. Las cookies de sesión son HttpOnly y se envían con credenciales del navegador. La UI nunca lee ni almacena el valor de sesión en JavaScript, localStorage o URLs.
+4. El cliente obtiene un CSRF previo a login y vuelve a solicitarlo después de autenticar; todas las operaciones de escritura y logout envían `X-CSRF-Token`.
+5. La UI trata `401`, `403`, `404`, `409`, `413`, `422`, `429`, `503` y `5xx` con estados diferenciados; fallos de red/API no se presentan como listas vacías o resultados mock.
+6. La UI no presenta creación de cuentas, recuperación de contraseñas, gestión de médicos ni gestión de horarios porque el contrato actual no ofrece esas operaciones.
+7. El rol `administrative` no equivale a `administrator`; la administración de cuentas/auditoría no habilita lectura clínica. La autorización del servidor se verifica aun cuando la UI oculte controles.
+8. No se envía información identificable o clínica a Gemini/chat, analytics ni logs desde los recorridos médicos.
 
 ## Health checks
 

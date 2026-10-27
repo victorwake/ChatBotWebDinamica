@@ -1,8 +1,29 @@
 import type { Patient } from "@/data/mockPatients"
 import type { ViewProps } from "@/types"
+import { EmptyState } from "@/components/ui/states"
+import { demoDataEnabled } from "@/lib/demo-data"
 
 export default function PatientsView({ data, onAction }: ViewProps) {
   const patients = data?.patients as Patient[] | undefined
+
+  if (!demoDataEnabled) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
+        <EmptyState
+          title="La lista todavía no está conectada"
+          description="No mostramos datos de ejemplo como si fueran datos reales. La integración con la API estará disponible en la Fase 3."
+        />
+      </div>
+    )
+  }
+
+  if (!patients) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center">
+        <EmptyState title="No se cargaron datos de demostración" description="Volvé al inicio e intentá abrir el listado nuevamente." />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
@@ -27,12 +48,11 @@ export default function PatientsView({ data, onAction }: ViewProps) {
             </tr>
           </thead>
           <tbody>
-            {patients && patients.length > 0 ? (
+            {patients.length > 0 ? (
               patients.map((p) => (
                 <tr
                   key={p.id}
                   className="cursor-pointer border-t border-slate-100 transition hover:bg-teal-50/40"
-                  onClick={() => onAction?.({ view: "patient_detail", data: { patient: p } })}
                 >
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -40,7 +60,13 @@ export default function PatientsView({ data, onAction }: ViewProps) {
                         {p.name.charAt(0)}
                       </span>
                       <div>
-                        <p className="font-medium text-slate-800">{p.name}</p>
+                        <button
+                          type="button"
+                          className="text-left font-medium text-slate-800 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-teal-700"
+                          onClick={() => onAction?.({ view: "patient_detail", data: { patient: p } })}
+                        >
+                          {p.name}
+                        </button>
                         <p className="text-xs text-slate-400">{p.email}</p>
                       </div>
                     </div>
