@@ -1,0 +1,775 @@
+{
+  "info": {
+    "_postman_id": "a1b452bf-91fd-4c12-8f20-7ccf45de75d4",
+    "name": "Sistema Médico API",
+    "description": "Colección de pruebas organizada por estado real del backend y por rol del contrato /api/v1. Postman guarda automáticamente las cookies Set-Cookie (incluida la cookie HttpOnly de sesión) en su cookie jar para las siguientes requests al mismo host. El token CSRF sí se guarda en csrfToken y se envía en X-CSRF-Token. Las rutas legacy están implementadas; el contrato v1 de autenticación y roles todavía está pendiente de las fases correspondientes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "apiPrefix", "value": "/api/v1" },
+    { "key": "legacyPrefix", "value": "/api" },
+    { "key": "csrfToken", "value": "" },
+    { "key": "patientId", "value": "pat_demo_001" },
+    { "key": "otherPatientId", "value": "pat_demo_002" },
+    { "key": "appointmentId", "value": "apt_demo_001" },
+    { "key": "slotId", "value": "slot_demo_001" }
+  ],
+  "item": [
+    {
+      "name": "00 - Estado del servicio (implementado)",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/health/live",
+            "description": "Comprueba que el proceso HTTP está activo; no requiere MySQL."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Indica status ok', function () { pm.expect(pm.response.json().status).to.eql('ok'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness - MySQL disponible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/health/ready",
+            "description": "Comprueba la conexión a MySQL. Espera 200 y dependencies.database=ok."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Backend y base de datos listos', function () { pm.response.to.have.status(200); });",
+                  "pm.test('MySQL figura como disponible', function () { pm.expect(pm.response.json().dependencies.database).to.eql('ok'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Demo actual (sin sesiones ni roles)",
+      "description": "Estas rutas son de demostración, no forman parte del contrato /api/v1 y no autentican ni aplican permisos. Sirven para comprobar las rutas que ya existen hoy.",
+      "item": [
+        {
+          "name": "Login demo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{legacyEmail}}\",\n  \"password\": \"{{legacyPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{legacyPrefix}}/auth/login",
+            "description": "Login temporal del backend demo. La respuesta no crea cookie ni token de sesión."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login demo responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve identidad demo', function () { pm.expect(pm.response.json()).to.have.property('id'); pm.expect(pm.response.json()).to.have.property('email'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pacientes demo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{legacyPrefix}}/patients",
+            "description": "Ruta demo pública y sin autorización; no representa la política del contrato v1."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista demo responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve una lista', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar turnos demo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{legacyPrefix}}/appointments",
+            "description": "Ruta demo en memoria y sin autorización."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista de turnos demo responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve una lista', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 - Contrato v1 - Autenticación",
+      "description": "Contrato objetivo; hoy puede responder 404 hasta implementar la Fase 2. Ejecutar Obtener CSRF antes de cada login. Postman conserva automáticamente la cookie de sesión devuelta por login.",
+      "item": [
+        {
+          "name": "Obtener CSRF pre-login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf",
+            "description": "Ejecutar antes de Login paciente, Login administrativo o Login profesional. El test guarda csrfToken; la cookie de contexto recibida queda en el cookie jar de Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve token CSRF', function () { pm.expect(body.csrfToken).to.be.a('string').and.not.empty; });",
+                  "pm.collectionVariables.set('csrfToken', body.csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Ejecutar Obtener CSRF pre-login primero. La cookie session se maneja automáticamente en Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login paciente responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La identidad tiene rol patient', function () { pm.expect(body.roles).to.include('patient'); });",
+                  "pm.collectionVariables.set('currentUserId', body.id);",
+                  "if (body.patientId) pm.collectionVariables.set('patientId', body.patientId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrativo",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{administrativeEmail}}\",\n  \"password\": \"{{administrativePassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Ejecutar Obtener CSRF pre-login primero. Acepta los roles contractuales administrative o administrator."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login administrativo responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La identidad tiene rol administrativo', function () { pm.expect(body.roles.some(function (role) { return ['administrative', 'administrator'].includes(role); })).to.eql(true); });",
+                  "pm.collectionVariables.set('currentUserId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login profesional",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Ejecutar Obtener CSRF pre-login primero."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login profesional responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La identidad tiene rol doctor', function () { pm.expect(body.roles).to.include('doctor'); });",
+                  "pm.collectionVariables.set('currentUserId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sesión actual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/me",
+            "description": "Requiere haber iniciado sesión en este host. La cookie session la envía automáticamente Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sesión autenticada responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('La respuesta contiene roles', function () { pm.expect(pm.response.json().roles).to.be.an('array').that.is.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener CSRF autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf",
+            "description": "Ejecutar antes de cada operación de escritura autenticada. Actualiza csrfToken y el contexto CSRF del cookie jar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF autenticado responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('csrfToken', body.csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/logout",
+            "description": "Ejecutar Obtener CSRF autenticado inmediatamente antes. Postman procesa Set-Cookie para expirar la sesión."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logout devuelve 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20 - Rol paciente (contrato v1)",
+      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como paciente automáticamente antes de probar los permisos. Para PATCH, ejecutá Obtener CSRF autenticado inmediatamente antes.",
+      "item": [
+        {
+          "name": "Obtener CSRF para login paciente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF pre-login responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Postman conserva automáticamente la cookie de sesión para las requests siguientes de esta carpeta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login paciente responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La cuenta tiene rol patient', function () { pm.expect(body.roles).to.include('patient'); });",
+                  "if (body.patientId) pm.collectionVariables.set('patientId', body.patientId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pacientes - debe denegarse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente no puede listar pacientes', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar mi paciente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}",
+            "description": "Usa patientId devuelto en el login, si la API lo incluye, o el valor configurado en la colección."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente consulta su propio perfil', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar paciente ajeno - debe denegarse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{otherPatientId}}",
+            "description": "Espera 403 o 404 según la política documentada de ocultar recursos ajenos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No expone el perfil de otra persona', function () { pm.expect([403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar especialidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/specialties"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente autenticado puede consultar especialidades', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar mis turnos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente consulta sus turnos', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar teléfono propio",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+54 11 5555-0102\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/patients/{{patientId}}",
+            "description": "Ejecutar Obtener CSRF autenticado antes de esta request. Usar solo datos de prueba."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Actualiza solo campos permitidos', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "30 - Rol administrativo (contrato v1)",
+      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como personal administrativo antes de probar sus permisos. Las operaciones de escritura requieren Obtener CSRF autenticado inmediatamente antes.",
+      "item": [
+        {
+          "name": "Obtener CSRF para login administrativo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF pre-login responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como administrativo",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{administrativeEmail}}\",\n  \"password\": \"{{administrativePassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Postman conserva automáticamente la cookie de sesión para las requests siguientes de esta carpeta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login administrativo responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La cuenta tiene rol administrativo', function () { pm.expect(body.roles.some(function (role) { return ['administrative', 'administrator'].includes(role); })).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pacientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/patients?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Personal administrativo puede listar pacientes', function () { pm.response.to.have.status(200); });",
+                  "pm.test('La respuesta está paginada', function () { const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('totalItems'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear paciente de prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Paciente\",\n  \"lastName\": \"Postman\",\n  \"nationalId\": \"{{testNationalId}}\",\n  \"birthDate\": \"1990-01-15\",\n  \"phone\": \"+54 11 5555-0103\",\n  \"email\": \"{{testPatientEmail}}\",\n  \"address\": \"Dirección de prueba\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/patients",
+            "description": "Ejecutar Obtener CSRF autenticado antes. Crea datos persistentes de prueba; usar un nationalId único."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente de prueba creado', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "if (body.id) pm.collectionVariables.set('patientId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar especialidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/specialties"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Personal autenticado puede consultar especialidades', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar turno",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Confirmación de prueba\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/appointments/{{appointmentId}}/confirm",
+            "description": "Ejecutar Obtener CSRF autenticado antes y configurar appointmentId con un turno solicitado existente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Personal administrativo confirma turno solicitado', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "40 - Rol profesional (contrato v1)",
+      "description": "Ejecutá la carpeta en orden: obtiene CSRF e inicia sesión como profesional antes de probar sus permisos. Las reglas específicas de acceso profesional aún deben completarse en fases posteriores.",
+      "item": [
+        {
+          "name": "Obtener CSRF para login profesional",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/csrf"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CSRF pre-login responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().csrfToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como profesional",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/login",
+            "description": "Postman conserva automáticamente la cookie de sesión para las requests siguientes de esta carpeta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login profesional responde 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('La cuenta tiene rol doctor', function () { pm.expect(body.roles).to.include('doctor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sesión profesional",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sesión profesional activa', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().roles).to.include('doctor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar especialidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/specialties"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profesional autenticado consulta especialidades', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar profesionales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}{{apiPrefix}}/doctors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profesional autenticado consulta profesionales', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
