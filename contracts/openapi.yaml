@@ -5,7 +5,8 @@ info:
   description: |
     Contrato HTTP independiente de la tecnología del backend.
     Esta versión define sesión, pacientes, referencias, gestión de turnos y
-    acceso controlado a consultas e historia clínica.
+    acceso controlado a consultas e historia clínica. La API aplica límites de
+    frecuencia por IP; al excederlos responde 429 con ErrorResponse.
 servers:
   - url: http://localhost:4000/api/v1
     description: Desarrollo local

@@ -12,6 +12,15 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     error.status < 500
       ? error.status
       : 500
+  const errorResponse = statusCode === 413
+    ? { code: "PAYLOAD_TOO_LARGE", message: "El cuerpo de la solicitud supera el tamaño permitido." }
+    : statusCode === 408
+      ? { code: "REQUEST_TIMEOUT", message: "La solicitud excedió el tiempo permitido." }
+      : statusCode === 429
+        ? { code: "RATE_LIMITED", message: "Se alcanzó el límite de solicitudes." }
+        : statusCode === 500
+          ? { code: "INTERNAL_ERROR", message: "Ocurrió un error interno." }
+          : { code: "BAD_REQUEST", message: "El request no tiene un formato válido." }
 
   logger.error("HTTP request failed", {
     requestId,
@@ -21,8 +30,7 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 
   res.status(statusCode).json({
     error: {
-      code: statusCode === 500 ? "INTERNAL_ERROR" : "BAD_REQUEST",
-      message: statusCode === 500 ? "Ocurrió un error interno." : "El request no tiene un formato válido.",
+      ...errorResponse,
       requestId,
     },
   })

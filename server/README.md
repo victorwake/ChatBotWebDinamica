@@ -4,7 +4,7 @@
 
 Desde esta carpeta, copiá `.env.example` a `.env` y completá los datos de conexión. `.env` contiene configuración local y no se debe subir a Git. El servidor valida las variables al iniciar y falla explícitamente si faltan o son inválidas.
 
-Variables requeridas: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_NAME`. `DB_CONNECTION_LIMIT`, `PORT` y `CORS_ORIGINS` tienen valores seguros por defecto para desarrollo.
+Variables requeridas: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_NAME`. `DB_CONNECTION_LIMIT`, `PORT` y `CORS_ORIGINS` tienen valores seguros por defecto para desarrollo. En producción, `CORS_ORIGINS` debe enumerar orígenes HTTPS exactos y `DB_PASSWORD` no puede estar vacía.
 
 ## Comandos
 
@@ -35,6 +35,9 @@ Los scripts existentes de `scripts_mysql/mysql/` son de preparación inicial/des
 
 - `GET /api/v1/health/live`: confirma que el proceso HTTP está activo.
 - `GET /api/v1/health/ready`: confirma que MySQL acepta consultas; devuelve `503` si no está disponible.
+- Las respuestas incluyen `X-Request-Id` y cabeceras de seguridad; CORS solo permite los orígenes configurados.
+- `/api/v1` aplica un límite por IP configurable mediante `API_RATE_LIMIT_WINDOW_MS` y `API_RATE_LIMIT_MAX`; los health checks no consumen ese límite.
+- El JSON entrante está limitado a 1 MiB. El servidor aplica timeouts de cabeceras, request, conexión inactiva y apagado ordenado.
 
 ## Autenticación de fase 2
 
@@ -57,3 +60,13 @@ Solo el rol `administrator` puede listar y consultar cuentas, cambiar su estado 
 Las respuestas de auditoría exponen únicamente actor, acción, recurso y fecha; no devuelven snapshots, correos, direcciones IP, agentes de usuario, credenciales ni contenido clínico. Los snapshots internos contienen únicamente el indicador de activación y los nombres de roles anterior/nuevo. El alta de cuentas y la configuración inicial de credenciales siguen siendo parte del procedimiento privado de provisión; la API no acepta ni devuelve contraseñas. El esquema inicial ya incluía almacenamiento para estos eventos, por lo que esta fase no agrega migraciones SQL.
 
 La prueba `server/test/administration-phase6.test.ts` actualiza una cuenta sintética, verifica persistencia y auditoría minimizada y confirma las denegaciones. Ejecutá la suite solo con una base local de pruebas; las fixtures eliminan los eventos sintéticos que crean.
+
+## Endurecimiento y puesta en producción de fase 7
+
+En producción, las rutas demo no versionadas `/api/*` no se montan; solo queda disponible el contrato `/api/v1`. Los orígenes CORS HTTP son rechazados al cargar la configuración productiva. Configurá `TRUST_PROXY_HOPS` con el número exacto de proxies inversos confiables que realmente existan delante del proceso (por defecto `0`); un valor incorrecto puede permitir falsificar IP de cliente. Terminá TLS en el proxy/gateway y no expongas directamente el puerto HTTP del backend a Internet.
+
+El rate limit incluido utiliza memoria local. En producción con más de una instancia, reinicios frecuentes o protección fuerte contra abuso, configurá además rate limiting compartido en el gateway/WAF; no confíes en que los contadores locales sean globales. Ajustá los límites al tráfico esperado y monitorizá respuestas `429`.
+
+El proceso no aplica migraciones al arrancar. Aplicá y verificá una migración explícita antes de desplegar código que la requiera, con backup previo y plan de reversión. Para checklist de release, copias, restauración y limitaciones operativas consultá [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+La suite `npm test` compila y ejecuta integración MySQL, autorización, persistencia, concurrencia de turnos y endurecimiento HTTP. También se validan el contrato OpenAPI y las requests Postman. Ejecutala solo en una base local sintética; no conectes las pruebas de escritura a producción.
