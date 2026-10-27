@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scripts mysql
+scripts_mysql/mysql/*
+
+# docs
+docs/
