@@ -10,6 +10,44 @@ export type CurrentUser = {
   patientId?: string
 }
 
+export type PatientRegistrationInput = {
+  firstName: string
+  lastName: string
+  nationalId: string
+  birthDate: string
+  phone: string
+  email: string
+  address?: string
+  password: string
+}
+
+export type EmailVerificationInput = {
+  token: string
+}
+
+export type AcceptPatientInvitationInput = {
+  token: string
+  password: string
+}
+
+export type PatientRegistrationInvitationInput =
+  | { patientId: string; email: string }
+  | { patient: PatientInvitationProfileInput }
+
+export type PatientInvitationProfileInput = {
+  firstName: string
+  lastName: string
+  nationalId: string
+  birthDate: string
+  phone: string
+  email: string
+  address?: string
+}
+
+export type OperationAccepted = {
+  message: string
+}
+
 const userRoles = new Set([
   "patient",
   "doctor",

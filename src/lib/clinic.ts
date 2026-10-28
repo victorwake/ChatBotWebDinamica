@@ -37,6 +37,11 @@ export type PatientUpdate = {
   address?: string
 }
 
+export type PatientIdentityCorrectionInput = {
+  nationalId: string
+  reason: string
+}
+
 export type PatientCoverage = {
   id: string
   providerId: string
@@ -49,6 +54,11 @@ export type PatientCoverage = {
   validFrom: string
   validUntil?: string
   active: boolean
+}
+
+export type CoverageProviderSummary = {
+  id: string
+  name: string
 }
 
 export type PatientCoverageInput = {

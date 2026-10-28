@@ -1,7 +1,14 @@
 # Plan de mejoras: registro de pacientes y solicitud de turnos
 
-**Estado:** propuesta para revisar antes de implementar  
+**Estado:** Fases 0 y 1 cerradas; gates operativos para implementación y producción pendientes
+
 **Fecha:** 27/10/2026
+
+## Estado de las fases
+
+- **Fase 0 — Decisiones operativas y de identidad:** ✅ Terminada el 27/10/2026. Las decisiones funcionales están acordadas y documentadas; los prerrequisitos abiertos para producción quedan registrados como gates.
+- **Fase 1 — Contrato y modelo de datos:** ✅ Terminada el 28/10/2026. Contrato, tipos, esquema objetivo, preflight y revisión de compatibilidad documentados.
+- **Fases 2–7 — Implementación y liberación:** ⏳ Pendientes.
 
 ## 1. Objetivo
 
@@ -101,16 +108,27 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 
 ### Fase 0 — Decisiones operativas y de identidad
 
-1. Confirmar si el catálogo y la disponibilidad pueden ser públicos y qué datos del profesional se muestran.
-2. Definir campos obligatorios de registro: se propone nombre, apellido, DNI, fecha de nacimiento, móvil y email; domicilio opcional. Evitar pedir datos sin uso definido.
-3. Definir qué hacer ante DNI/email existente, ficha duplicada, paciente menor de edad y persona sin email.
-4. Definir verificación de email/teléfono, proveedor de mensajería y política de activación. No simular una verificación inexistente.
-5. Definir quién corrige DNI, qué evidencia/motivo registra y quién puede invitar a activar cuenta.
-6. Definir alta de `administrator`, recuperación de cuenta, requisitos de MFA (si se adopta) y bootstrap inicial.
-7. Validar política de coberturas: si es opcional, cuándo se solicita y si una obra social es necesaria para reservar.
-8. Revisar privacidad, retención, consentimiento y obligaciones con las personas responsables del consultorio.
+**Decisiones confirmadas:**
 
-**Salida:** decisiones aprobadas y escenarios de aceptación; ningún comportamiento de negocio sensible queda implícito.
+1. **Catálogo y disponibilidad:** serán públicos antes del login, limitados a información mínima de especialidades/profesionales y horarios. Nunca expondrán pacientes, agenda privada ni historia clínica.
+2. **Registro:** nombre, apellido, DNI, fecha de nacimiento, móvil y email obligatorios; domicilio opcional.
+3. **Verificación:** email verificado antes de habilitar reservas. El proveedor de email todavía no está elegido; queda como prerrequisito de habilitación en producción.
+4. **Identidad existente:** no vincular cuentas o fichas automáticamente por coincidencia de DNI/email ni revelar públicamente si esos datos ya existen. Resolver por verificación adecuada o revisión privada del consultorio.
+5. **Cobertura:** opcional; se permite atención particular. No afirmar que una obra social/plan está aceptado por un profesional hasta tener un catálogo y reglas mantenidas por el consultorio.
+6. **Corrección de DNI:** reservada a personal autorizado, con motivo obligatorio, validación de duplicados y auditoría.
+7. **Menores y grupo familiar:** fuera del primer release, hasta definir tutoría y consentimiento.
+8. **Administradores:** el primero se provisiona mediante bootstrap fuera del sitio; altas posteriores mediante invitación auditada por un administrador autorizado. El registro público nunca puede crear roles privilegiados.
+9. **Horario seleccionado:** no se retiene durante el registro. La API vuelve a validar disponibilidad al confirmar; ante conflicto, el usuario debe elegir otro horario.
+10. **Adjuntos y recordatorios:** fotos de DNI/credenciales/órdenes y notificaciones por email/WhatsApp quedan fuera hasta elegir proveedor y definir almacenamiento, acceso y retención.
+
+**Prerrequisitos aún abiertos:**
+
+- Elegir, configurar y probar el proveedor de email; producción no habilitará el autorregistro/verificación hasta que funcione el envío, expiración y uso único de tokens.
+- Definir recuperación de cuenta y si se exigirá MFA para `administrator` antes de habilitar altas privilegiadas desde la aplicación.
+- Obtener revisión operativa/legal de consentimiento, privacidad, retención y datos requeridos. Este plan no representa una certificación de cumplimiento legal.
+- Precisar qué datos de profesionales/especialidades pueden publicarse y confirmar que el consultorio autoriza la disponibilidad pública.
+
+**Salida:** decisiones funcionales principales registradas. La Fase 0 queda cerrada para continuar el diseño del contrato; los prerrequisitos abiertos son gates explícitos y no pueden resolverse por supuestos de implementación.
 
 ### Fase 1 — Contrato y modelo de datos
 
@@ -210,15 +228,11 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 | Subir imágenes amplía exposición de datos sensibles | Diferir adjuntos hasta definir almacenamiento privado, acceso, retención, análisis y borrado. |
 | Cobertura elegida no es aceptada por profesional | No mostrar aceptación ni filtrar por red hasta disponer de catálogo/reglas confiables. |
 
-## 10. Decisiones pendientes para aprobar antes de ejecutar
+## 10. Decisiones y gates registrados
 
-1. ¿La disponibilidad de turnos y el directorio de médicos/especialidades serán públicos antes de iniciar sesión? Recomendación: sí, solo lectura y con información mínima.
-2. ¿Se exige verificación de email o teléfono antes de reservar? Recomendación: email verificado antes de activar la cuenta; confirmar proveedor y costo operativo.
-3. ¿La cobertura será obligatoria para solicitar cualquier turno o solo para validar/confirmar determinadas prestaciones? Recomendación: permitir particular/sin cobertura hasta que el consultorio defina el alcance.
-4. ¿Qué documentación y aprobación exige una corrección de DNI? Recomendación: solo personal autorizado, motivo registrado, posible revisión del titular y auditoría.
-5. ¿Se aceptan reservas de menores desde el primer release? Recomendación: no hasta diseñar tutor/grupo familiar y consentimiento.
-6. ¿Quién puede invitar a administradores y se requiere MFA o segunda aprobación? Recomendación: el primer administrador se provisiona fuera del sitio; luego solo un administrador activo invita, sujeto a revisión operativa.
-7. ¿Se necesita un bloqueo temporal del horario durante el registro? Recomendación inicial: no; revalidar al confirmar. Agregar hold solo si las métricas/operación demuestran que la persona pierde turnos durante checkout.
+Las decisiones de flujo y producto de la Fase 0 se confirmaron el 27/10/2026 y están incorporadas en la sección 7. Antes de habilitar el flujo en producción se deben cerrar los prerrequisitos indicados allí: proveedor de email, recuperación/MFA administrativa, revisión operativa/legal y autorización de publicación del directorio/disponibilidad.
+
+La salida y evidencia de Fase 1 están documentadas en `docs/fase-1-contrato-y-modelo-registro-turnos.md`; se verificó en solo lectura el esquema objetivo y se revisaron contrato, seguridad de diseño, migraciones y compatibilidad backend/frontend. La fase queda cerrada como diseño. Las rutas todavía deben implementarse en Fase 2 y siguientes. Los gates operativos de email, recuperación/MFA administrativa, privacidad y autorización de publicación siguen vigentes; no habilitar registro en producción ni crear administradores mediante UI mientras correspondan.
 
 ## 11. Referencias internas
 
@@ -231,4 +245,3 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 - Cliente de pacientes y coberturas: `src/lib/clinic.ts`.
 - Plan frontend actual: `docs/frontend-implementation-plan-3765be.md`.
 - Plan backend actual: `docs/backend-implementation-plan-3765be.md`.
-

@@ -50,3 +50,6 @@ server/migrations/*.sql
 
 # docs
 docs/
+!docs/
+docs/*
+!docs/fase-1-contrato-y-modelo-registro-turnos.md

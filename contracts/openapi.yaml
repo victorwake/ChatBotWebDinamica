@@ -6,7 +6,9 @@ info:
     Contrato HTTP independiente de la tecnología del backend.
     Esta versión define sesión, pacientes, referencias, gestión de turnos y
     acceso controlado a consultas e historia clínica. La API aplica límites de
-    frecuencia por IP; al excederlos responde 429 con ErrorResponse.
+    frecuencia por IP; al excederlos responde 429 con ErrorResponse. Las rutas
+    públicas de registro y catálogos no revelan si una identidad ya existe ni
+    exponen información de pacientes o datos clínicos.
 servers:
   - url: http://localhost:4000/api/v1
     description: Desarrollo local
@@ -211,6 +213,185 @@ paths:
                 patientId: pat_demo_001
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      operationId: registerPatientAccount
+      summary: Solicitar el registro de una cuenta de paciente
+      description: |
+        Crea de forma transaccional una persona, una ficha de paciente y una
+        cuenta con el único rol patient, y envía un enlace de verificación.
+        No vincula fichas existentes por coincidencia de DNI o email. La
+        respuesta es idéntica cuando los datos ya están registrados para evitar
+        enumeración; en ese caso el sistema no modifica ni revela la cuenta
+        existente. La cuenta no puede reservar turnos hasta verificar el email.
+        Requiere CSRF y está sujeta al límite de solicitudes; la implementación
+        debe además aplicar un límite específico de intentos. Reintentar una
+        solicitud no crea una segunda cuenta; solo puede haber un token de
+        verificación vigente por cuenta y la emisión de otro invalida el anterior.
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientRegistrationInput"
+      responses:
+        "202":
+          description: Solicitud aceptada con respuesta indistinguible ante datos ya registrados.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationAccepted"
+              example:
+                message: Si los datos pueden registrarse, recibirás instrucciones en el email indicado.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/verify-email:
+    post:
+      tags: [Authentication]
+      operationId: verifyPatientEmail
+      summary: Verificar el email de una cuenta de paciente
+      description: |
+        Consume un token de verificación opaco, de un solo uso y con expiración.
+        Ante éxito, activa la cuenta e inicia sesión con una cookie HttpOnly.
+        Los tokens inválidos, expirados o ya utilizados tienen una respuesta
+        genérica y nunca se registran en logs.
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailVerificationInput"
+      responses:
+        "200":
+          description: Email verificado y sesión iniciada.
+          headers:
+            Set-Cookie:
+              description: Cookie de sesión HttpOnly; el valor es opaco para el cliente.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/registration-invitations:
+    post:
+      tags: [Authentication]
+      operationId: createPatientRegistrationInvitation
+      summary: Invitar a un paciente a activar su cuenta
+      description: |
+        Disponible para administrative y administrator. Permite invitar una
+        ficha existente o crear una ficha y emitir su invitación de manera
+        transaccional. Nunca establece ni devuelve una contraseña o token.
+        La invitación solo puede crear una cuenta con rol patient; no puede
+        asignar ni promover roles. La respuesta no confirma si una invitación
+        previa ya existe. Repetir una invitación no duplica la ficha ni genera
+        tokens vigentes en paralelo: el nuevo token invalida al anterior.
+        Para una ficha existente, el email debe coincidir con el contacto que
+        ya consta en ella y el personal debe verificar por un proceso aprobado
+        la identidad del titular y su acceso a ese email; no se cambia el
+        contacto ni se crea otra cuenta si la ficha ya está vinculada.
+        Se auditan actor, acción, referencia y fecha sin registrar tokens,
+        credenciales ni datos clínicos.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientRegistrationInvitationInput"
+      responses:
+        "202":
+          description: Invitación procesada sin revelar secretos ni enumerar invitaciones.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationAccepted"
+              example:
+                message: Si los datos son válidos, se enviarán instrucciones al email indicado.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/accept-invitation:
+    post:
+      tags: [Authentication]
+      operationId: acceptPatientRegistrationInvitation
+      summary: Aceptar una invitación y activar la cuenta de paciente
+      description: |
+        Consume un token opaco de un solo uso y con expiración, establece la
+        contraseña elegida por su titular, crea la cuenta asociada a la ficha
+        invitada con el único rol patient e inicia sesión. No permite elegir
+        paciente, email ni rol desde el cliente. Tokens inválidos, expirados o
+        ya utilizados tienen una respuesta genérica y nunca se registran en logs.
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptPatientInvitationInput"
+      responses:
+        "200":
+          description: Invitación aceptada y sesión iniciada.
+          headers:
+            Set-Cookie:
+              description: Cookie de sesión HttpOnly; el valor es opaco para el cliente.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -496,7 +677,10 @@ paths:
       tags: [Patients]
       operationId: updatePatient
       summary: Actualizar datos permitidos del paciente
-      description: El paciente solo puede actualizar su propio teléfono, email y dirección.
+      description: |
+        El paciente solo puede actualizar su propio teléfono, email y dirección.
+        Los cambios de DNI u otros identificadores se realizan exclusivamente
+        mediante POST /patients/{patientId}/identity-corrections.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -523,6 +707,51 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /patients/{patientId}/identity-corrections:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    post:
+      tags: [Patients]
+      operationId: correctPatientIdentity
+      summary: Corregir un identificador de paciente con auditoría
+      description: |
+        Solo personal administrativo autorizado. El motivo es obligatorio y
+        el servidor valida duplicados usando la identidad normalizada antes de
+        aplicar el cambio. La actualización y su evento de auditoría son
+        atómicos. La auditoría conserva actor, paciente, fecha y motivo, pero
+        no copia credenciales, información clínica ni snapshots de datos
+        personales. Nunca se ofrece esta operación al titular ni al registro público.
+      security:
+        - sessionCookie: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientIdentityCorrectionInput"
+      responses:
+        "200":
+          description: Identificador corregido.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         "500":
@@ -604,7 +833,12 @@ paths:
       tags: [Patients]
       operationId: updatePatientCoverage
       summary: Actualizar cobertura del paciente
-      description: El paciente solo puede actualizar sus propias coberturas; el personal administrativo puede actualizar las que gestiona.
+      description: |
+        El paciente solo puede actualizar sus propias coberturas; el personal
+        administrativo puede actualizar las que gestiona. La baja es lógica:
+        active=false exige validUntil y primary=false. La fecha final no puede
+        anteceder a validFrom. Nunca se elimina físicamente una cobertura ni
+        se modifica la referencia histórica de un turno.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -641,8 +875,7 @@ paths:
       tags: [Scheduling]
       operationId: listSpecialties
       summary: Listar especialidades disponibles
-      security:
-        - sessionCookie: []
+      description: Público y de solo lectura; devuelve únicamente especialidades activas autorizadas para publicación.
       responses:
         "200":
           description: Especialidades activas para reservar turnos.
@@ -655,8 +888,8 @@ paths:
               example:
                 - id: sp_demo_01
                   name: Medicina general
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -665,8 +898,7 @@ paths:
       tags: [Scheduling]
       operationId: listDoctors
       summary: Listar profesionales disponibles para turnos
-      security:
-        - sessionCookie: []
+      description: Público y de solo lectura; expone solo nombre e información profesional autorizada, nunca datos de contacto.
       parameters:
         - name: specialtyId
           in: query
@@ -687,8 +919,37 @@ paths:
                   specialty:
                     id: sp_demo_01
                     name: Medicina general
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /coverage-providers:
+    get:
+      tags: [Scheduling]
+      operationId: listCoverageProviders
+      summary: Listar entidades de cobertura activas
+      description: |
+        Catálogo de solo lectura para usuarios autenticados con identificador de API y nombre.
+        No implica que una entidad, plan o cobertura sea aceptada por un
+        profesional. No se exponen datos de afiliados ni planes sin una fuente
+        operativa verificada. La visibilidad pública queda pendiente de decisión
+        operativa; hasta entonces se requiere sesión.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Entidades activas autorizadas para aparecer en el catálogo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoverageProviderSummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -705,11 +966,11 @@ paths:
         administración de horarios se incorpora en una fase posterior.
         Los horarios almacenados se interpretan en America/Argentina/Buenos_Aires;
         los instantes de entrada y salida se expresan en ISO 8601 con offset.
+        Esta consulta es pública, de solo lectura y rate-limited; solo devuelve
+        los horarios publicados para reserva, sin datos de pacientes ni agenda privada.
         Las excepciones de día completo bloquean la agenda; un bloqueo con horas
         excluye ese intervalo, mientras que una excepción de tipo cambio reemplaza
         la agenda semanal de ese profesional para la fecha.
-      security:
-        - sessionCookie: []
       parameters:
         - name: from
           in: query
@@ -758,8 +1019,8 @@ paths:
                 totalItems: 1
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         "500":
@@ -1393,6 +1654,129 @@ components:
     UserRole:
       type: string
       enum: [patient, doctor, administrative, administrator]
+    OperationAccepted:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+    PatientRegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, nationalId, birthDate, phone, email, password]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        nationalId:
+          type: string
+          minLength: 5
+          maxLength: 20
+          pattern: "^[0-9 .-]{5,20}$"
+          description: DNI; el servidor elimina separadores, conserva ceros iniciales y comprueba duplicados sobre el valor normalizado.
+        birthDate:
+          type: string
+          format: date
+        phone:
+          type: string
+          minLength: 5
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        address:
+          type: string
+          maxLength: 300
+        password:
+          type: string
+          minLength: 12
+          maxLength: 256
+          writeOnly: true
+    EmailVerificationInput:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          writeOnly: true
+    AcceptPatientInvitationInput:
+      type: object
+      additionalProperties: false
+      required: [token, password]
+      properties:
+        token:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          writeOnly: true
+        password:
+          type: string
+          minLength: 12
+          maxLength: 256
+          writeOnly: true
+    PatientRegistrationInvitationInput:
+      oneOf:
+        - $ref: "#/components/schemas/ExistingPatientInvitationInput"
+        - $ref: "#/components/schemas/NewPatientInvitationInput"
+    ExistingPatientInvitationInput:
+      type: object
+      additionalProperties: false
+      required: [patientId, email]
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    NewPatientInvitationInput:
+      type: object
+      additionalProperties: false
+      required: [patient]
+      properties:
+        patient:
+          $ref: "#/components/schemas/PatientInvitationProfileInput"
+    PatientInvitationProfileInput:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, nationalId, birthDate, phone, email]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        nationalId:
+          type: string
+          minLength: 5
+          maxLength: 20
+          pattern: "^[0-9 .-]{5,20}$"
+        birthDate:
+          type: string
+          format: date
+        phone:
+          type: string
+          minLength: 5
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        address:
+          type: string
+          maxLength: 300
     CurrentUser:
       type: object
       additionalProperties: false
@@ -1540,6 +1924,22 @@ components:
         address:
           type: string
           maxLength: 300
+    PatientIdentityCorrectionInput:
+      type: object
+      additionalProperties: false
+      required: [nationalId, reason]
+      properties:
+        nationalId:
+          type: string
+          minLength: 5
+          maxLength: 20
+          pattern: "^[0-9 .-]{5,20}$"
+          description: DNI corregido; el servidor normaliza separadores antes de validar duplicados.
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+          description: Motivo administrativo; no incluir credenciales, datos clínicos ni copias del DNI.
     PatientSummary:
       type: object
       additionalProperties: false
@@ -1598,6 +1998,7 @@ components:
       properties:
         providerId:
           type: string
+          pattern: "^[1-9][0-9]{0,9}$"
         memberNumber:
           type: string
           minLength: 1
@@ -1621,6 +2022,17 @@ components:
           format: date
         active:
           type: boolean
+      allOf:
+        - if:
+            properties:
+              active:
+                const: false
+            required: [active]
+          then:
+            required: [validUntil]
+            properties:
+              primary:
+                const: false
     PatientCoverage:
       type: object
       additionalProperties: false
@@ -1651,6 +2063,15 @@ components:
           format: date
         active:
           type: boolean
+    CoverageProviderSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
     SpecialtySummary:
       type: object
       additionalProperties: false
