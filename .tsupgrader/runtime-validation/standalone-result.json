@@ -1,0 +1,256 @@
+{
+  "planHash": "5108e7e45e09fd38f0c3c6a7186590566a5c05a731d1c0932a4a98ba7e8e82e5",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-02T21:42:05.1943229Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E chatbotwebdinamica@0.1.0 test\r\n\u003E vitest run tests\r\n\r\n\r\n RUN  v4.1.12 G:/Projetos Programacion/ChatBotWebDinamica\r\n\r\n\r\n Test Files  6 passed (6)\r\n      Tests  44 passed (44)\r\n   Start at  18:40:44\r\n   Duration  1.01s (transform 554ms, setup 0ms, import 1.13s, tests 628ms, environment 12ms)\r\n\r\n",
+        "durationMs": 2619,
+        "testResults": {
+          "testFramework": "vitest",
+          "runnerDetectedFrom": "package_json",
+          "testsTotal": 44,
+          "testsPassed": 44,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": false
+        }
+      },
+      {
+        "name": "backend-tests-pass",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E test\r\n\u003E npm run build \u0026\u0026 node --test --test-concurrency=1 dist/test/*.test.js\r\n\r\n\r\n\u003E build\r\n\u003E tsc\r\n\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.009Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022815f288e-534e-4d2b-acbb-86fda6abc961\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:27.61}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.104Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022Inicio de sesi\u00F3n completado\u0022,\u0022userId\u0022:\u00221344\u0022,\u0022roles\u0022:\u0022administrator\u0022}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.105Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u00223813e1b7-9591-481d-b912-1f5bf509559b\u0022,\u0022method\u0022:\u0022POST\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:78.45}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.123Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022040723e1-9fb2-4ff6-9040-766f483f3348\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:1.99}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.153Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u002250a465b2-96ac-43de-bc06-e82ad16ff360\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:14.04}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.175Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u002213739fd9-23d9-4477-8e5f-b23abd2a1901\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:7.01}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.231Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022Inicio de sesi\u00F3n completado\u0022,\u0022userId\u0022:\u00221342\u0022,\u0022roles\u0022:\u0022patient\u0022}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.232Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022566e9a47-3c29-4c57-a8d3-b11fd1c88bfa\u0022,\u0022method\u0022:\u0022POST\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:48.02}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.249Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022a991d15a-0de7-48d5-8b68-6041ff176df6\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:2.54}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.264Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u00228a4ef5b3-89ca-4af6-8377-daa13a53224c\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:403,\u0022durationMs\u0022:2.45}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.284Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022dc19ca39-d270-413a-bc61-a741b63e0946\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:6.47}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.340Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022Inicio de sesi\u00F3n completado\u0022,\u0022userId\u0022:\u00221346\u0022,\u0022roles\u0022:\u0022administrative\u0022}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.340Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022cbe2f00b-4053-428b-b79b-0e2d47c7a925\u0022,\u0022method\u0022:\u0022POST\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:46.62}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.344Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u00223a6e8b82-cf02-4317-948b-5590a351d24d\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:2.15}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.358Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022d1539c36-3bea-4e5f-8329-2795c2a80894\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:403,\u0022durationMs\u0022:2.02}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.361Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022c9fbaaa0-3e56-4a80-ba8d-7573719b788c\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:403,\u0022durationMs\u0022:1.84}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.375Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u00229262cc97-e616-46e5-bbe9-4c7252785dbd\u0022,\u0022method\u0022:\u0022PATCH\u0022,\u0022statusCode\u0022:403,\u0022durationMs\u0022:2.34}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.413Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u00228eed2c55-b8e6-480f-b9b4-4e68438da023\u0022,\u0022method\u0022:\u0022PATCH\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:24.87}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.431Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u002289556033-f6c7-4a9e-bfc2-0b9ff6bfcb20\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:12.94}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.443Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u002207aea319-0246-40e2-9761-005679cfc23f\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:9.44}\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:52.457Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022d4f329bc-d89c-43db-b2a2-eed3ceaf8469\u0022,\u0022method\u0022:\u0022PATCH\u0022,\u0022statusCode\u0022:409,\u0022durationMs\u0022:7.17}\r\n\u2714 administrator manages account access and reads minimized audit events (901.3129ms)\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:40:53.362Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022HTTP request\u0022,\u0022requestId\u0022:\u0022ba1a0a13-f393-4dea-ad36-f22eb3f6aeae\u0022,\u0022method\u0022:\u0022GET\u0022,\u0022statusCode\u0022:200,\u0022durationMs\u0022:30.64}\r\n{\u0022tim\n\u2026[truncated]",
+        "durationMs": 31621
+      },
+      {
+        "name": "frontend-build",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E chatbotwebdinamica@0.1.0 build\r\n\u003E next build\r\n\r\n\u25B2 Next.js 16.2.9 (Turbopack)\r\n- Environments: .env.local\r\n\r\n  Creating an optimized production build ...\r\n\u2713 Compiled successfully in 8.3s\r\n  Running TypeScript ...\r\n  Finished TypeScript in 6.3s ...\r\n  Collecting page data using 7 workers ...\r\n  Generating static pages using 7 workers (0/21) ...\r\n  Generating static pages using 7 workers (5/21) \r\n  Generating static pages using 7 workers (10/21) \r\n  Generating static pages using 7 workers (15/21) \r\n\u2713 Generating static pages using 7 workers (21/21) in 999ms\r\n  Finalizing page optimization ...\r\n\r\nRoute (app)\r\n\u250C \u25CB /\r\n\u251C \u25CB /_not-found\r\n\u251C \u25CB /accept-invitation\r\n\u251C \u0192 /api/chat\r\n\u251C \u25CB /appointments\r\n\u251C \u0192 /appointments/[appointmentId]\r\n\u251C \u0192 /appointments/availability\r\n\u251C \u25CB /appointments/manage\r\n\u251C \u25CB /audit-logs\r\n\u251C \u25CB /consultations\r\n\u251C \u0192 /consultations/[consultationId]\r\n\u251C \u0192 /consultations/new\r\n\u251C \u25CB /dashboard\r\n\u251C \u0192 /doctors\r\n\u251C \u0192 /login\r\n\u251C \u25CB /patients\r\n\u251C \u0192 /patients/[patientId]\r\n\u251C \u0192 /patients/[patientId]/edit\r\n\u251C \u0192 /patients/[patientId]/invite\r\n\u251C \u0192 /patients/[patientId]/medical-history\r\n\u251C \u25CB /patients/new\r\n\u251C \u25CB /profile\r\n\u251C \u0192 /register\r\n\u251C \u25CB /specialties\r\n\u251C \u25CB /users\r\n\u251C \u0192 /users/[userId]\r\n\u2514 \u25CB /verify-email\r\n\r\n\r\n\u25CB  (Static)   prerendered as static content\r\n\u0192  (Dynamic)  server-rendered on demand\r\n\r\n",
+        "durationMs": 19938
+      },
+      {
+        "name": "frontend-lint",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E chatbotwebdinamica@0.1.0 lint\r\n\u003E eslint src\r\n\r\n",
+        "durationMs": 9809
+      },
+      {
+        "name": "frontend-typecheck",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E chatbotwebdinamica@0.1.0 typecheck\r\n\u003E tsc --noEmit\r\n\r\n",
+        "durationMs": 6189
+      },
+      {
+        "name": "public-availability-page",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!DOCTYPE html\u003E\u003Chtml lang=\u0022es\u0022 class=\u0022geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-module__8Li5zG__variable h-full antialiased\u0022\u003E\u003Chead\u003E\u003Cmeta charSet=\u0022utf-8\u0022/\u003E\u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1\u0022/\u003E\u003Clink rel=\u0022stylesheet\u0022 href=\u0022/_next/static/chunks/%5Broot-of-the-server%5D__04kpziu._.css\u0022 data-precedence=\u0022next_static/chunks/[root-of-the-server]__04kpziu._.css\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022script\u0022 fetchPriority=\u0022low\u0022 href=\u0022/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_1xx01vv._.js\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_next-devtools_index_090k2jm.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_client_0r5nbpw._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_1ybzpk2._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_%40swc_helpers_cjs_1r9vbqw._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_1anvha4._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/turbopack-_01_ro95._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_1z5ula5._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/src_0uic72s._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/src_app_layout_tsx_007e4b2._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_0e8rg6-._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/src_app_(public)_layout_tsx_1m8p078._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_client_components_builtin_global-error_1m8p078.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/src_0vvj2u-._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/src_app_(public)_appointments_availability_page_tsx_1k2-wg1._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cmeta name=\u0022next-size-adjust\u0022 content=\u0022\u0022/\u003E\u003Ctitle\u003EConsultorio \u2014 ChatBotWebDinamica\u003C/title\u003E\u003Cmeta name=\u0022description\u0022 content=\u0022Sistema m\u00E9dico con navegaci\u00F3n por chat\u0022/\u003E\u003Clink rel=\u0022icon\u0022 href=\u0022/favicon.ico?favicon.2vob68tjqpejf.ico\u0022 sizes=\u0022256x256\u0022 type=\u0022image/x-icon\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_build_polyfills_polyfill-nomodule.js\u0022 noModule=\u0022\u0022\u003E\u003C/script\u003E\u003C/head\u003E\u003Cbody class=\u0022flex min-h-full flex-col font-sans\u0022\u003E\u003Cdiv hidden=\u0022\u0022\u003E\u003C!--$--\u003E\u003C!--/$--\u003E\u003C/div\u003E\u003Cdiv class=\u0022flex min-h-screen flex-col\u0022\u003E\u003Ca href=\u0022#main-content\u0022 class=\u0022sr-only z-50 rounded-md bg-white p-3 text-teal-900 focus:not-sr-only focus:absolute focus:left-4 focus:top-4\u0022\u003ESaltar al contenido\u003C/a\u003E\u003Cheader class=\u0022border-b border-slate-200/80 bg-white/95 backdrop-blur\u0022\u003E\u003Cdiv class=\u0022mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between\u0022\u003E\u003Cdiv class=\u0022flex items-center justify-between gap-4\u0022\u003E\u003Ca class=\u0022flex w-fit items-center gap-3\u0022 href=\u0022/\u0022\u003E\u003Cspan class=\u0022flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white\u0022 aria-hidden=\u0022true\u0022\u003E\u003Csvg width=\u002218\u0022 height=\u002218\u0022 viewBox=\u00220 0 24 24\u0022 fill=\u0022none\u0022 stroke=\u0022currentColor\u0022 stroke-width=\u00222\u0022\u003E\u003Cpath stroke-linecap=\u0022round\u0022 d=\u0022M12 4v16M4 12h16\u0022\u003E\u003C/path\u003E\u003C/svg\u003E\u003C/span\u003E\u003Cspan\u003E\u003Cspan class=\u0022block text-sm font-semibold text-slate-900\u0022\u003EConsultorio\u003C/span\u003E\u003Cspan class=\u0022block text-[11px] text-slate-500\u0022\u003EGesti\u00F3n de atenci\u00F3n\u003C/span\u003E\u003C/span\u003E\u003C/a\u003E\u003Cbutton type=\u0022button\u0022 class=\u0022rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 md:hidden\u0022 aria-expanded=\u0022false\u0022 aria-controls=\u0022primary-navigation\u0022\u003EMen\u00FA\u003C/button\u003E\u003C/div\u003E\u003Cnav id=\u0022primary-navigation\u0022 aria-label=\u0022Navegaci\u00F3n principal\u0022 class=\u0022hidden -mx-1 overflow-x-auto md:block\u0022\u003E\u003Cul class=\u0022flex min-w-max items-center gap-1\u0022\u003E\u003Cli\u003E\u003Ca class=\u0022block rounded-lg px-3 py-2 text-sm transition text-slate-600 hover:bg-slate-100 hover:text-slate-900\u0022 href=\u0022/\u0022\u003EInicio\u003C/a\u003E\u003C/li\u003E\u003Cli\u003E\u003Ca class=\u0022block rounded-lg px-3 py-2 text-sm transition te\n\u2026[truncated]",
+        "durationMs": 9214
+      },
+      {
+        "name": "public-specialties-api",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n[{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},{\u0022id\u0022:\u00222\u0022,\u0022name\u0022:\u0022Dermatolog\u00EDa\u0022},{\u0022id\u0022:\u00223\u0022,\u0022name\u0022:\u0022Medicina General\u0022},{\u0022id\u0022:\u00226\u0022,\u0022name\u0022:\u0022Oftalmolog\u00EDa\u0022},{\u0022id\u0022:\u00224\u0022,\u0022name\u0022:\u0022Pediatr\u00EDa\u0022},{\u0022id\u0022:\u00225\u0022,\u0022name\u0022:\u0022Traumatolog\u00EDa\u0022}]\n--- server output ---\n\r\n\u003E dev\r\n\u003E tsx watch src/index.ts\r\n\r\n{\u0022timestamp\u0022:\u00222026-11-02T21:42:04.756Z\u0022,\u0022level\u0022:\u0022info\u0022,\u0022message\u0022:\u0022Backend HTTP iniciado\u0022,\u0022port\u0022:4100,\u0022environment\u0022:\u0022development\u0022}\r\n",
+        "durationMs": 2162
+      },
+      {
+        "name": "public-doctors-api",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n[{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022,\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022}},{\u0022id\u0022:\u00222\u0022,\u0022displayName\u0022:\u0022Laura S\u00E1nchez\u0022,\u0022specialty\u0022:{\u0022id\u0022:\u00223\u0022,\u0022name\u0022:\u0022Medicina General\u0022}}]",
+        "durationMs": 25
+      },
+      {
+        "name": "public-availability-api",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n{\u0022items\u0022:[{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDA5OjAwOjAwfDIwOTktMDEtMDUgMDk6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T12:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T12:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDA5OjMwOjAwfDIwOTktMDEtMDUgMTA6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T12:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T13:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDEwOjAwOjAwfDIwOTktMDEtMDUgMTA6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T13:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T13:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDEwOjMwOjAwfDIwOTktMDEtMDUgMTE6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T13:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T14:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDExOjAwOjAwfDIwOTktMDEtMDUgMTE6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T14:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T14:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDExOjMwOjAwfDIwOTktMDEtMDUgMTI6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T14:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T15:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDEyOjAwOjAwfDIwOTktMDEtMDUgMTI6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T15:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T15:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDEyOjMwOjAwfDIwOTktMDEtMDUgMTM6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T15:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T16:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE1OjAwOjAwfDIwOTktMDEtMDUgMTU6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T18:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T18:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE1OjMwOjAwfDIwOTktMDEtMDUgMTY6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T18:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T19:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE2OjAwOjAwfDIwOTktMDEtMDUgMTY6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T19:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T19:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE2OjMwOjAwfDIwOTktMDEtMDUgMTc6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T19:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T20:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE3OjAwOjAwfDIwOTktMDEtMDUgMTc6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T20:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T20:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE3OjMwOjAwfDIwOTktMDEtMDUgMTg6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T20:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T21:00:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE4OjAwOjAwfDIwOTktMDEtMDUgMTg6MzA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T21:00:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T21:30:00.000Z\u0022},{\u0022id\u0022:\u0022MXwyMDk5LTAxLTA1IDE4OjMwOjAwfDIwOTktMDEtMDUgMTk6MDA6MDA\u0022,\u0022doctor\u0022:{\u0022id\u0022:\u00221\u0022,\u0022displayName\u0022:\u0022Roberto Mart\u00EDnez\u0022},\u0022specialty\u0022:{\u0022id\u0022:\u00221\u0022,\u0022name\u0022:\u0022Cardiolog\u00EDa\u0022},\u0022startsAt\u0022:\u00222099-01-05T21:30:00.000Z\u0022,\u0022endsAt\u0022:\u00222099-01-05T22:00:00.000Z\u0022}],\u0022page\u0022:1,\u0022pageSize\u0022:20,\u0022totalItems\u0022:16}",
+        "durationMs": 126
+      }
+    ],
+    "executions": [
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "backend-tests-pass",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica\\server",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "frontend-build",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "build"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "frontend-lint",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "lint"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "frontend-typecheck",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "typecheck"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "public-availability-page",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev",
+          "--",
+          "--port",
+          "3102"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica",
+        "env": {
+          "PORT": "3102",
+          "NEXT_DIST_DIR": ".next/phase3-http-probe",
+          "NEXT_PUBLIC_API_URL": "http://localhost:4100/api"
+        },
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "public-specialties-api",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica\\server",
+        "env": {
+          "PORT": "4100",
+          "CORS_ORIGINS": "http://localhost:3100"
+        },
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "public-doctors-api",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica\\server",
+        "env": {
+          "PORT": "4100",
+          "CORS_ORIGINS": "http://localhost:3100"
+        },
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "public-availability-api",
+        "resolvedExecutable": "C:\\nvm4w\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev"
+        ],
+        "cwd": "G:\\Projetos Programacion\\ChatBotWebDinamica\\server",
+        "env": {
+          "PORT": "4100",
+          "CORS_ORIGINS": "http://localhost:3100"
+        },
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

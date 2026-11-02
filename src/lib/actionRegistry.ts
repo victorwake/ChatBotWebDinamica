@@ -26,7 +26,15 @@ const registry: Record<string, Handler> = {
     return null
   },
   appointments(input) {
-    if (/\b(?:turnos?|agendar|citas?|reservar|nuevo\s*turno|sac[ae]r\s*turno)\b/i.test(input))
+    if (/\b(?:mis\s+turnos?|ver\s+(?:mis\s+)?turnos?|consultar\s+(?:mis\s+)?turnos?)\b/i.test(input))
+      return { href: "/appointments", label: "Ver turnos" }
+    if (
+      /\b(?:turnos?|citas?)\b/i.test(input)
+      && /\b(?:sac[ae]r|agendar|reservar|solicitar|pedir|necesito|quiero|buscar|conseguir|programar)\b/i.test(input)
+    ) {
+      return { href: "/appointments/availability", label: "Buscar disponibilidad" }
+    }
+    if (/\b(?:turnos?|citas?|agendar|reservar|nuevo\s*turno|sac[ae]r\s*turno)\b/i.test(input))
       return { href: "/appointments", label: "Ver turnos" }
     return null
   },
@@ -56,7 +64,8 @@ export function formatHelp(): string {
   const items = [
     "🔐  **login** — iniciar sesión",
     "👥  **pacientes** — ver pacientes",
-    "📅  **turno** — consultar o agendar turnos",
+    "📅  **sacar turno** — buscar disponibilidad y reservar",
+    "🗓️  **mis turnos** — consultar turnos solicitados",
     "🩺  **atenciones** — consultar atenciones clínicas",
     "🏠  **inicio** — volver al menú principal",
   ]
@@ -79,6 +88,7 @@ export function getBotResponse(input: string, resolvedAction?: RegistryAction | 
     "/login": "Te llevo al formulario de inicio de sesión.",
     "/patients": "Acá tenés la lista de pacientes.",
     "/appointments": "Te llevo a turnos para consultar disponibilidad y solicitar uno.",
+    "/appointments/availability": "Te llevo a buscar disponibilidad para que puedas solicitar un turno.",
     "/consultations": "Te llevo a las atenciones clínicas.",
   }
 

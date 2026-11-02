@@ -18,3 +18,5 @@ ejecutar ninguna sentencia del archivo. Si hay diferencias o ya hay historial,
 se detiene sin registrar el baseline. El baseline no sustituye una copia de
 seguridad y no compara tipos, nulabilidad, valores predeterminados ni la
 definición completa de cada índice.
+
+La migración privada `005_patient_registration_invitations.sql` agrega los tokens de invitación de cuenta de paciente. Debe aplicarse con el ejecutor normal en cada entorno antes de habilitar los endpoints de invitación; el token en claro solo se envía por email y no se conserva en la base.

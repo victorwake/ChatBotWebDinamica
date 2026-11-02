@@ -2,9 +2,9 @@ import Link from "next/link"
 
 const shortcuts = [
   { title: "Iniciar sesión", description: "Acceso al sistema", href: "/login" },
-  { title: "Ver pacientes", description: "Listado del consultorio", href: "/patients" },
-  { title: "Consultar turnos", description: "Buscar o gestionar turnos", href: "/appointments" },
-  { title: "Atenciones clínicas", description: "Consultar historias y atenciones", href: "/consultations" },
+  { title: "Buscar turnos", description: "Consultá disponibilidad sin iniciar sesión", href: "/appointments/availability" },
+  { title: "Especialidades", description: "Explorá las especialidades disponibles", href: "/specialties" },
+  { title: "Profesionales", description: "Conocé los profesionales habilitados", href: "/doctors" },
 ]
 
 export default function Home() {
@@ -16,8 +16,8 @@ export default function Home() {
           Gestión clínica guiada por conversación.
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-slate-500 md:text-base">
-          Pedile al asistente que te lleve a pacientes, turnos o atenciones clínicas, o elegí una sección.
-          El acceso a las funciones protegidas requiere iniciar sesión.
+          Explorá profesionales, especialidades y horarios disponibles. Para solicitar un turno, iniciá sesión
+          o creá una cuenta de paciente.
         </p>
       </div>
 

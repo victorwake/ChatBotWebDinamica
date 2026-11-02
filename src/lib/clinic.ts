@@ -452,6 +452,9 @@ function queryString(values: Record<string, string | number | undefined>): strin
 
 export function getClinicErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
+    if (error.code === "PATIENT_APPOINTMENT_OVERLAP") {
+      return "Ya tenés un turno pendiente o confirmado que se superpone con ese horario. Elegí otro momento."
+    }
     if (error.status === 401) return "Tu sesión ya no está activa. Volvé a ingresar."
     if (error.status === 403) return "Tu perfil no tiene permiso para realizar esta operación."
     if (error.status === 404) return "El registro solicitado ya no está disponible."

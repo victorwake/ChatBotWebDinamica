@@ -22,7 +22,13 @@ const patientSummarySelect = `
 const createPatientSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
-  nationalId: z.string().trim().min(5).max(20),
+  nationalId: z.string().trim().min(5).max(20).regex(/^[0-9 .-]+$/).refine(
+    (value) => {
+      const normalized = value.replace(/\D/g, "")
+      return normalized.length >= 5 && normalized.length <= 20
+    },
+    "El DNI debe contener entre 5 y 20 dígitos.",
+  ),
   birthDate: z.string().date(),
   phone: z.string().trim().min(5).max(20),
   email: z.string().trim().email().max(254).optional(),
@@ -217,6 +223,7 @@ router.post(
     }
 
     try {
+      const nationalId = parsed.data.nationalId.replace(/\D/g, "")
       const patientId = await withTransaction(async (connection) => {
         const [person] = await connection.execute<ResultSetHeader>(
           `INSERT INTO personas
@@ -225,7 +232,7 @@ router.post(
           [
             parsed.data.firstName,
             parsed.data.lastName,
-            parsed.data.nationalId,
+            nationalId,
             parsed.data.birthDate,
             parsed.data.phone,
             parsed.data.address ?? null,

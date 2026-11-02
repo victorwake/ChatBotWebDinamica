@@ -8,10 +8,34 @@ test("patient books an available slot and admin confirms it with persisted histo
   const fixture = await createPhase4Fixture()
 
   try {
+    const publicSpecialtiesResponse = await fetch(`${fixture.baseUrl}/api/v1/specialties`)
+    assert.equal(publicSpecialtiesResponse.status, 200)
+    const publicSpecialties = await publicSpecialtiesResponse.json() as Array<{ id: string; name: string }>
+    assert.ok(publicSpecialties.some((specialty) => specialty.id === String(fixture.specialtyId)))
+
+    const publicDoctorsResponse = await fetch(`${fixture.baseUrl}/api/v1/doctors?specialtyId=${fixture.specialtyId}`)
+    assert.equal(publicDoctorsResponse.status, 200)
+    const publicDoctors = await publicDoctorsResponse.json() as Array<{
+      id: string
+      displayName: string
+      specialty: { id: string; name: string }
+    }>
+    assert.ok(publicDoctors.some((doctor) =>
+      doctor.id === String(fixture.doctorId)
+      && doctor.specialty.id === String(fixture.specialtyId)
+      && !("email" in doctor)
+      && !("phone" in doctor),
+    ))
+
     const anonymous = await fetch(
-      `${fixture.baseUrl}/api/v1/appointments/availability?from=${encodeURIComponent(fixture.from)}&to=${encodeURIComponent(fixture.to)}`,
+      `${fixture.baseUrl}/api/v1/appointments/availability?from=${encodeURIComponent(fixture.from)}&to=${encodeURIComponent(fixture.to)}&doctorId=${fixture.doctorId}&pageSize=100`,
     )
-    assert.equal(anonymous.status, 401)
+    assert.equal(anonymous.status, 200)
+    const publicAvailability = await anonymous.json() as {
+      items: Array<{ id: string; doctor: { id: string }; startsAt: string; patient?: unknown }>
+    }
+    assert.ok(publicAvailability.items.some((slot) => slot.doctor.id === String(fixture.doctorId)))
+    assert.ok(publicAvailability.items.every((slot) => !("patient" in slot) && !("email" in slot)))
 
     const patient = await fixture.login(fixture.patient, fixture.baseUrl)
     const invalidRange = await fetch(

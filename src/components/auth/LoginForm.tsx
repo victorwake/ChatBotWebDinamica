@@ -50,7 +50,7 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-slate-900">Acceso al sistema</h1>
-          <p className="mt-1 text-sm text-slate-600">Ingresá con la cuenta provista por el consultorio.</p>
+          <p className="mt-1 text-sm text-slate-600">Ingresá con tu cuenta de paciente o del consultorio.</p>
         </div>
 
         <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
@@ -92,7 +92,15 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
         </form>
 
         <p className="mt-6 text-xs leading-relaxed text-slate-500">
-          El alta de cuentas y la recuperación de contraseña no están disponibles en esta versión.{" "}
+          ¿Todavía no tenés cuenta?{" "}
+          <Link
+            className="font-medium text-teal-800 underline underline-offset-2"
+            href={`/register?next=${encodeURIComponent(safeInternalPath(nextPath))}`}
+          >
+            Crear cuenta de paciente
+          </Link>
+          <br />
+          La recuperación de contraseña no está disponible en esta versión.{" "}
           <Link className="font-medium text-teal-800 underline underline-offset-2" href="/">
             Volver al inicio
           </Link>

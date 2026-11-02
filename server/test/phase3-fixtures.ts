@@ -31,7 +31,9 @@ export type Phase3Fixture = {
 }
 
 export async function createPhase3Fixture(): Promise<Phase3Fixture> {
-  const suffix = randomUUID().replaceAll("-", "")
+  const suffix = BigInt(`0x${randomUUID().replaceAll("-", "").slice(0, 12)}`)
+    .toString()
+    .padStart(15, "0")
   const createdAccounts: TestAccount[] = []
   let specialtyId = 0
   let doctorId = 0
@@ -107,9 +109,13 @@ export async function createPhase3Fixture(): Promise<Phase3Fixture> {
     createAccount(connection, "medico", false, "doctor"))
 
   await withTransaction(async (connection) => {
+    await connection.execute(
+      "UPDATE personas SET nombre = ?, apellido = ? WHERE id = ?",
+      ["Lucía", "Benítez", doctorAccount.personaId],
+    )
     const [specialty] = await connection.execute<ResultSetHeader>(
       "INSERT INTO especialidades (nombre, activa) VALUES (?, TRUE)",
-      [`Fase 3 ${suffix.slice(0, 12)}`],
+      [`Neurología Fase 3 ${suffix.slice(0, 12)}`],
     )
     specialtyId = specialty.insertId
     const [doctor] = await connection.execute<ResultSetHeader>(

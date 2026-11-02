@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-11-02T19:30:00Z",
+  "generatedOnPlatform": "win32",
+  "projectType": "webapp",
+  "setup": [],
+  "assertions": [
+    {
+      "name": "tests-pass",
+      "kind": "process",
+      "command": "npm",
+      "args": ["test"],
+      "verificationMethod": "test-results",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "backend-tests-pass",
+      "kind": "process",
+      "command": "npm",
+      "args": ["test"],
+      "cwd": "server",
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "frontend-build",
+      "kind": "process",
+      "command": "npm",
+      "args": ["run", "build"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "frontend-lint",
+      "kind": "process",
+      "command": "npm",
+      "args": ["run", "lint"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "frontend-typecheck",
+      "kind": "process",
+      "command": "npm",
+      "args": ["run", "typecheck"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "public-availability-page",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev", "--", "--port", "3102"],
+      "env": {
+        "PORT": "3102",
+        "NEXT_DIST_DIR": ".next/phase3-http-probe",
+        "NEXT_PUBLIC_API_URL": "http://localhost:4100/api"
+      },
+      "url": "http://localhost:3102/appointments/availability",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "public-specialties-api",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev"],
+      "cwd": "server",
+      "env": {
+        "PORT": "4100",
+        "CORS_ORIGINS": "http://localhost:3100"
+      },
+      "url": "http://localhost:4100/api/v1/specialties",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "public-doctors-api",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev"],
+      "cwd": "server",
+      "env": {
+        "PORT": "4100",
+        "CORS_ORIGINS": "http://localhost:3100"
+      },
+      "url": "http://localhost:4100/api/v1/doctors",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 60
+    },
+    {
+      "name": "public-availability-api",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev"],
+      "cwd": "server",
+      "env": {
+        "PORT": "4100",
+        "CORS_ORIGINS": "http://localhost:3100"
+      },
+      "url": "http://localhost:4100/api/v1/appointments/availability?from=2099-01-05T00:00:00.000Z&to=2099-01-06T00:00:00.000Z",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 60
+    }
+  ]
+}

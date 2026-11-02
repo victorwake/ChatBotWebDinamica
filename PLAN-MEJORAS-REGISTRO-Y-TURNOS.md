@@ -1,14 +1,17 @@
 # Plan de mejoras: registro de pacientes y solicitud de turnos
 
-**Estado:** Fases 0 y 1 cerradas; gates operativos para implementación y producción pendientes
+**Estado:** Fases 0 y 1 cerradas como decisiones y diseño. Fases 2 y 4 implementadas localmente, con gates operativos pendientes. Fase 3 implementada; suites y probes HTTP aprobados el 02/11/2026, pero sigue pendiente el recorrido E2E completo en navegador.
 
-**Fecha:** 27/10/2026
+**Fecha:** 02/11/2026
 
 ## Estado de las fases
 
 - **Fase 0 — Decisiones operativas y de identidad:** ✅ Terminada el 27/10/2026. Las decisiones funcionales están acordadas y documentadas; los prerrequisitos abiertos para producción quedan registrados como gates.
 - **Fase 1 — Contrato y modelo de datos:** ✅ Terminada el 28/10/2026. Contrato, tipos, esquema objetivo, preflight y revisión de compatibilidad documentados.
-- **Fases 2–7 — Implementación y liberación:** ⏳ Pendientes.
+- **Fase 2 — Registro y autenticación de pacientes:** 🟡 Implementación local completa; liberación bloqueada por gates operativos. Backend de registro/verificación, pantalla de alta, bloqueo de login sin verificar, migraciones locales y pruebas automatizadas implementados. Faltan probar entrega real con Resend, aprobar consentimiento/privacidad y repetir preflight/aplicar migraciones en cada entorno destino.
+- **Fase 3 — Búsqueda pública y reserva continuada:** 🟡 Endpoints y pantallas públicas, continuidad de la selección, revalidación, regla de solapamiento, navegación del chat a la búsqueda pública y selección visual de horarios con resumen/modal de confirmación implementados; suites, build y probes HTTP pasan. Pendiente recorrido E2E completo de navegador.
+- **Fase 4 — Alta administrativa e invitaciones:** ✅ Implementada localmente y validada. Incluye emisión/reenvío, aceptación de un solo uso, UI y bootstrap protegido del primer administrador. La migración privada 005 está aplicada solo en la base local; email real, proceso aprobado de verificación de identidad y ejecución controlada del bootstrap siguen siendo gates de entorno.
+- **Fases 5–7 — Implementación y liberación:** ⏳ Pendientes.
 
 ## 1. Objetivo
 
@@ -18,13 +21,13 @@ La aplicación debe seguir comunicándose con el backend exclusivamente mediante
 
 ## 2. Estado actual verificado
 
-- La disponibilidad, la consulta y la reserva de turnos requieren una sesión autenticada. `POST /appointments` reserva para un paciente ya asociado a la sesión o para un paciente indicado por personal administrativo.
-- `POST /auth/register` no existe en el contrato ni en el router de autenticación.
+- Las consultas de especialidades, profesionales y disponibilidad son públicas, de solo lectura y rate-limited; la reserva continúa requiriendo sesión.
+- `POST /auth/register` y la verificación de email están implementados. Las invitaciones continúan pendientes.
 - `POST /patients` crea un perfil, no una cuenta, y está limitado a `administrative` y `administrator`.
 - El paciente puede actualizar teléfono, email y domicilio. El DNI no se admite en la actualización actual.
 - El contrato permite varias coberturas por paciente y agregar/actualizar coberturas. La baja lógica puede representarse con `active=false` y fecha de vigencia final; no existe borrado físico.
 - La UI permite listar y actualizar roles/estado de cuentas, pero no crear cuentas.
-- La cobertura requiere un `providerId`; falta una ruta de catálogo para que el usuario elija por nombre en lugar de ingresar un identificador interno.
+- La cobertura requiere un `providerId`; el contrato ya define `GET /coverage-providers`, pero todavía falta implementar la ruta para que la interfaz elija por nombre.
 - La reserva ya valida la disponibilidad dentro de una transacción. No hay un mecanismo contractual de retención temporal del horario.
 - El backend y el esquema privado tienen entidades de personas, pacientes, usuarios y coberturas. Cualquier cambio de persistencia debe verificarse contra las migraciones locales antes de decidir si hacen falta columnas o tablas nuevas.
 
@@ -85,21 +88,21 @@ Este flujo reduce la fricción sin permitir reservas anónimas difíciles de vin
 - **REQ-008 — Crear cuentas privilegiadas:** el registro público nunca permite asignar roles administrativos. El primer `administrator` se provisiona fuera del flujo público; otras altas privilegiadas requieren invitación de un administrador autorizado y auditoría.
 - **REQ-009 — Privacidad y robustez:** todas las escrituras exigen CSRF y autenticación donde corresponda; respuestas de registro no permiten enumerar identidades; las escrituras son idempotentes o resistentes a duplicados y los permisos se verifican en servidor.
 
-## 6. Contrato API a evolucionar
+## 6. Contrato API y estado de implementación
 
-Diseñar primero OpenAPI y luego implementar servidor y cliente. Las rutas siguientes son una propuesta de nombres; se deben ajustar al estilo definitivo del contrato.
+El contrato OpenAPI ya define las operaciones siguientes. La presencia en el contrato no significa que la ruta esté implementada: las operaciones de registro/invitación y las consultas públicas quedan para las fases de implementación indicadas abajo. Los tipos de cliente pueden anticipar el contrato, pero no deben invocar rutas que el backend aún no expone.
 
-| Operación propuesta | Acceso | Propósito |
+| Operación contractual | Acceso | Propósito |
 |---|---|---|
 | `GET /specialties`, `GET /doctors`, `GET /appointments/availability` | Público, solo lectura y rate limit | Permitir que una persona nueva encuentre opciones. Definir qué información de profesionales/agenda puede publicarse. |
-| `POST /auth/register` | Público + CSRF + rate limit | Crear cuenta de paciente y perfil vinculado, iniciar sesión y devolver `CurrentUser`. El DTO no acepta `roles`, `active`, `patientId` ni IDs internos. |
+| `POST /auth/register`, `POST /auth/verify-email` | Público + CSRF + rate limit | Crear cuenta de paciente y perfil vinculado; responder `202` de forma genérica. La cuenta no puede reservar hasta verificar el email. El DTO no acepta roles ni IDs internos. |
 | `POST /auth/registration-invitations` | Personal administrativo + CSRF | Crear ficha o invitar al titular de una ficha existente sin establecer su contraseña. |
-| `POST /auth/accept-invitation` | Token de un uso + CSRF | Verificar invitación, establecer credencial y asociar la cuenta a la ficha correcta. |
+| `POST /auth/accept-invitation` | Token de un uso + CSRF | Verificar invitación, establecer credencial y asociar la cuenta a la ficha correcta; crea solo el rol `patient`. |
 | `PATCH /patients/{patientId}` | Titular para campos permitidos; personal autorizado para correcciones | Separar campos ordinarios de cambios de DNI/identidad; registrar auditoría de cambios sensibles. |
 | `GET /coverage-providers` | Público o sesión, según decisión operativa | Catálogo de entidades activas con identificadores de API, nombres y, si existe fuente confiable, planes disponibles. |
 | `GET/POST /patients/{patientId}/coverage` | Titular de la ficha o personal autorizado | Listar y agregar coberturas. |
 | `PUT /patients/{patientId}/coverage/{coverageId}` | Titular de la ficha o personal autorizado | Actualizar datos, vigencia, principalidad o baja lógica (`active=false`). |
-| `POST /users` o `POST /admin-invitations` | Solo `administrator` | Crear/invitar cuentas privilegiadas sin exponer passwords ni aceptar escalamiento desde clientes públicos. Considerar mantener el primer administrador solo como operación de bootstrap. |
+| `POST /users` (operación contractual ya existente) | Solo `administrator` | Alta controlada de cuentas privilegiadas sin exponer passwords ni aceptar escalamiento desde clientes públicos. El primer administrador sigue siendo un procedimiento de bootstrap. |
 | `POST /appointments` | Paciente autenticado o personal autorizado | Reservar con identidad asociada a la sesión; volver a validar disponibilidad de manera atómica. |
 
 Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, idempotencia cuando aplique, límites de tasa y reglas de auditoría. El contrato de registro no debe distinguir en mensajes públicos entre “email/DNI existente” y otros conflictos que permitan enumeración; el flujo de resolución debe ser privado.
@@ -112,7 +115,7 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 
 1. **Catálogo y disponibilidad:** serán públicos antes del login, limitados a información mínima de especialidades/profesionales y horarios. Nunca expondrán pacientes, agenda privada ni historia clínica.
 2. **Registro:** nombre, apellido, DNI, fecha de nacimiento, móvil y email obligatorios; domicilio opcional.
-3. **Verificación:** email verificado antes de habilitar reservas. El proveedor de email todavía no está elegido; queda como prerrequisito de habilitación en producción.
+3. **Verificación:** email verificado antes de habilitar reservas. Se eligió Resend; configuración y prueba real por entorno siguen siendo prerrequisitos de producción.
 4. **Identidad existente:** no vincular cuentas o fichas automáticamente por coincidencia de DNI/email ni revelar públicamente si esos datos ya existen. Resolver por verificación adecuada o revisión privada del consultorio.
 5. **Cobertura:** opcional; se permite atención particular. No afirmar que una obra social/plan está aceptado por un profesional hasta tener un catálogo y reglas mantenidas por el consultorio.
 6. **Corrección de DNI:** reservada a personal autorizado, con motivo obligatorio, validación de duplicados y auditoría.
@@ -135,43 +138,49 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 1. Actualizar `contracts/openapi.yaml` con registro, invitaciones, catálogo y reglas de actualización de pacientes/coberturas.
 2. Revisar `server/migrations/` y los datos/esquema locales no versionados antes de decidir migraciones. Verificar claves únicas de DNI/email, asociación `users`–`personas`–`pacientes`, password hash, y referencias de cobertura desde turnos.
 3. Diseñar cambios mínimos de persistencia y un procedimiento de migración/rollback, sin publicar en Git scripts que el proyecto mantiene privados.
-4. Asegurar índice/constraint único para identidad normalizada de paciente, tratando duplicados históricos como tarea de reconciliación y no como error que se resuelve automáticamente.
-5. Definir auditoría de cambios de DNI, roles, estado y cobertura sin duplicar en logs datos de salud o credenciales.
+4. Preparar una migración privada con unicidad sobre DNI normalizado y email de cuenta normalizado. Repetir el preflight en cada entorno y resolver manualmente cualquier colisión antes de aplicarla; nunca fusionar identidades automáticamente.
+5. Definir los eventos de auditoría para correcciones de DNI, invitaciones, cambios de roles/estado y cambios de cobertura, con referencias mínimas y sin snapshots de datos personales, números de afiliado, credenciales ni información clínica.
 6. Actualizar los modelos y tipos del cliente TypeScript generados o mantenidos desde el contrato.
 
-**Gate:** revisión de contrato, seguridad, migración y compatibilidad backend/frontend antes de comenzar los flujos.
+**Gate de diseño:** contrato, seguridad, migración privada y compatibilidad backend/frontend revisados. La migración no se aplica automáticamente; su preflight y aplicación controlada son requisito previo a habilitar las escrituras de Fase 2 en cada entorno.
 
 ### Fase 2 — Registro y autenticación de pacientes (P1)
 
-1. Implementar `POST /auth/register` con validación estricta, rate limit, hash de credencial, CSRF y creación transaccional de persona, paciente, usuario, rol `patient` y asociación.
-2. Implementar flujo de activación/verificación acordado; si depende de proveedor externo, mantenerlo detrás de interfaz configurable y no habilitar registro de producción sin la entrega real.
-3. Resolver los conflictos de identidad sin revelar datos de cuentas ya existentes ni enlazar automáticamente perfiles no verificados.
-4. Implementar formulario y ruta de registro, errores de validación, consentimiento y accesibilidad.
-5. Añadir “Crear cuenta” desde `/login` y desde el momento en que la persona intenta confirmar una reserva.
-6. Probar alta, login, logout, CSRF, rate limit, duplicados, expiración/reuso de token y persistencia de asociación.
+**Avance:** endpoints de registro/verificación, integración configurable con Resend, bloqueo de login no verificado, formularios `/register` y `/verify-email`, y migraciones locales 003/004 implementados. La configuración de Resend no contiene credenciales en el repositorio. La cuenta y el token quedan guardados en transacción; si Resend falla, el endpoint devuelve `503` y un reintento con la misma identidad y contraseña rota el token previo. La verificación habilita la sesión únicamente con rol `patient`.
 
-**Aceptación:** una persona nueva puede completar el alta y terminar autenticada como `patient`; no puede asignarse otro rol ni consultar fichas ajenas.
+1. Implementar `POST /auth/register` con validación estricta, rate limit, hash de credencial, CSRF y creación transaccional de persona, paciente, usuario, rol `patient` y asociación. **Implementado.**
+2. Implementar flujo de activación/verificación acordado con Resend; mantener el registro cerrado si falta configuración y no habilitar registro de producción sin envío real probado. **Código implementado; configuración/entrega real pendiente.**
+3. Resolver los conflictos de identidad sin revelar datos de cuentas ya existentes ni enlazar automáticamente perfiles no verificados. **Implementado con respuesta `202` genérica y aviso sin token para conflictos.**
+4. Implementar formulario y ruta de registro, errores de validación y accesibilidad. **Implementado.** El consentimiento legal definitivo continúa pendiente de aprobación operativa; la casilla actual solo confirma la exactitud de los datos y la solicitud de alta.
+5. Añadir “Crear cuenta” desde `/login` y desde el momento en que la persona intenta confirmar una reserva. **Enlace desde `/login` implementado; integración desde el flujo de reserva queda para Fase 3.**
+6. Probar alta, login, logout, CSRF, rate limit, duplicados, expiración/reuso de token y persistencia de asociación. **Pruebas automatizadas implementadas para alta, CSRF, login previo a verificación, verificación de un uso, expiración y reemisión, límites de registro/verificación, reintento ante fallo de entrega, duplicados y asociación paciente. La entrega real del proveedor y su configuración siguen pendientes.**
+
+**Aceptación:** una persona nueva puede completar el alta y terminar autenticada como `patient`; no puede asignarse otro rol ni consultar fichas ajenas. El flujo está cubierto por pruebas locales. Para liberar, además deben configurarse y probarse Resend con credenciales del entorno, aprobarse consentimiento/privacidad y aplicarse las migraciones en cada entorno destino después de su preflight. No declarar habilitada la fase en producción hasta cerrar esos gates.
 
 ### Fase 3 — Búsqueda pública y reserva continuada (P1)
 
-1. Definir endpoints públicos de solo lectura para especialidades, profesionales y disponibilidad, con rate limit y minimización de datos.
-2. Permitir navegar la disponibilidad sin sesión y conservar localmente solo la selección no sensible (slot ID/criterios) durante la transición a login/registro. No guardar datos personales o clínicos en `localStorage`.
-3. Al volver autenticado, reconsultar/validar el slot y reservar a partir de `patientId` de la sesión. Nunca aceptar del navegador un paciente diferente para el rol `patient`.
-4. Reutilizar la transacción existente de reserva y sus controles de concurrencia; respuestas `409` vuelven a disponibilidad.
-5. Revisar duplicados de turno: definir regla de producto exacta (mismo paciente, profesional/especialidad, ventana temporal y estados que cuentan) antes de agregar restricciones.
-6. No filtrar disponibilidad por cobertura hasta tener catálogo confiable y relación profesional–plan; presentar la cobertura como dato informativo si todavía no existe esa validación.
+1. Definir endpoints públicos de solo lectura para especialidades, profesionales y disponibilidad, con rate limit y minimización de datos. **Implementado:** rutas activas únicamente y protegidas por el rate limit global de `/api/v1`; las respuestas no contienen datos de pacientes ni contactos profesionales.
+2. Permitir navegar la disponibilidad sin sesión y conservar solo la selección no sensible durante la transición a login/registro. **Implementado:** `/specialties`, `/doctors` y `/appointments/availability` son páginas públicas. La disponibilidad se agrupa por día argentino, permite elegir un horario y muestra un resumen con modal antes de confirmar; Slot ID y filtros permitidos viajan como query de continuación al enlace de verificación, sin persistir datos personales/clínicos ni usar `localStorage`.
+3. Al volver autenticado, reconsultar/validar el slot y reservar a partir de `patientId` de la sesión. Nunca aceptar del navegador un paciente diferente para el rol `patient`. **Implementado:** la UI reconsulta antes de enviar y el backend vuelve a validar dentro de la transacción; el servidor ignora/rechaza un `patientId` ajeno.
+4. Reutilizar la transacción existente de reserva y sus controles de concurrencia; respuestas `409` vuelven a disponibilidad. **Implementado:** reserva transaccional existente preservada; conflicto refresca las opciones sin presentar una reserva falsa.
+5. Revisar duplicados de turno antes de agregar restricciones. **Decisión confirmada:** bloquear solapamientos horarios del mismo paciente con cualquier profesional cuando el otro turno esté `pending` o `confirmed`; turnos cancelados no bloquean. Implementado de forma transaccional en reserva y reprogramación, con serialización por ficha de paciente y pruebas de carreras.
+6. No filtrar disponibilidad por cobertura hasta tener catálogo confiable y relación profesional–plan; presentar la cobertura como dato informativo si todavía no existe esa validación. **Implementado:** la búsqueda no usa ni afirma compatibilidad de coberturas.
 
-**Aceptación:** una persona nueva completa la secuencia explorar → elegir horario → registrarse → confirmar; la sesión y el chat persisten, y si el horario ya no está disponible se ofrece una alternativa sin mostrar una reserva falsa.
+**Validación actual (02/11/2026):** validación runtime standalone aprobada: frontend 44/44 pruebas, backend 26/26, lint, typecheck y build; HTTP 200 en la página pública de disponibilidad y en especialidades, profesionales y disponibilidad de la API. Se agregó una prueba de integración que verifica acentos en nombres públicos al escribirlos y leerlos desde MySQL. El intento de grabación llegó a login conservando la continuación y el horario seleccionado, pero el replay automático falló y no generó un spec reutilizable. La instancia compartida inicialmente respondió 401 en las rutas públicas; en la siguiente verificación ya había un proceso backend nuevo y todas las rutas respondieron 200, y la página de búsqueda volvió a cargar al recargarla. En la base local de desarrollo también se encontraron nombres de catálogo con mojibake aunque columnas, conexión y respuesta usan UTF-8. Con autorización, se corrigieron transaccionalmente 5 nombres de especialidades activas y 2 apellidos de profesionales activos; no se modificaron filas de pacientes ni de turnos. Las rutas públicas devuelven ahora el catálogo correctamente codificado. Se corrigió el destino del comando conversacional para sacar/agendar/reservar un turno: ahora abre `/appointments/availability`; “ver mis turnos” continúa en la sección privada. El recorrido E2E hasta reservar sigue pendiente; los probes y la navegación del chat no lo sustituyen.
+
+**Aceptación:** una persona puede explorar sin sesión, elegir un horario, iniciar sesión o registrarse, verificar su email, volver a la búsqueda y confirmar el turno. La sesión y el chat permanecen en el layout raíz; al regresar se vuelve a consultar disponibilidad. Si el horario no está disponible, se ofrece una alternativa sin mostrar una reserva falsa.
 
 ### Fase 4 — Alta administrativa e invitaciones (P1)
 
-1. Extender el alta administrativa de paciente para registrar contacto y emitir invitación segura, sin asignar contraseña ni imprimir un secreto.
-2. Implementar aceptación de invitación, expiración, un solo uso, invalidación y manejo de reenvío con respuesta que no permita enumerar cuentas.
-3. Crear una cuenta desde una ficha existente solo después de comprobar que quien la reclama está autorizado a vincularse.
-4. Añadir UI para personal `administrative`; auditoría y permisos validados también en el backend.
-5. Implementar el bootstrap del primer administrador como comando de despliegue/documentación operativa, con secretos fuera del repositorio. Altas posteriores solo por un flujo privilegiado y auditado.
+1. Extender el alta administrativa de paciente para registrar contacto y emitir invitación segura, sin asignar contraseña ni imprimir un secreto. **Implementado:** alta nueva con invitación opcional y ruta para invitar una ficha existente; autorización administrativa, CSRF y creación de la ficha con invitación en una transacción.
+2. Implementar aceptación de invitación, expiración, un solo uso, invalidación y manejo de reenvío con respuesta que no permita enumerar cuentas. **Implementado:** token opaco de 256 bits guardado como hash, expiración de 24 horas, consumo único, revocación al reenviar y respuestas genéricas para fichas/cuentas no elegibles.
+3. Crear una cuenta desde una ficha existente solo después de comprobar que quien la reclama está autorizado a vincularse. **Implementado como control de proceso:** email debe coincidir con el contacto de la ficha y el personal debe registrar una confirmación explícita de la verificación aprobada de identidad/acceso. El proceso de verificación debe aprobarse y documentarse operativamente antes de producción.
+4. Añadir UI para personal `administrative`; auditoría y permisos validados también en el backend. **Implementado:** formulario para invitar fichas nuevas/existentes; backend concede únicamente `patient` y audita emisión/aceptación sin email, tokens, credenciales ni datos clínicos.
+5. Implementar el bootstrap del primer administrador como comando de despliegue/documentación operativa, con secretos fuera del repositorio. Altas posteriores solo por un flujo privilegiado y auditado. **Implementado:** comando `bootstrap:administrator` exige confirmación, credenciales inyectadas por secretos, ausencia de cuentas con rol administrador y deja auditoría; no se ejecutó en ningún entorno.
 
 **Aceptación:** recepción puede registrar un paciente e invitarlo; no conoce su contraseña. Ningún endpoint público permite crear o promover cuentas administrativas.
+
+**Validación:** backend, 26/26 pruebas de integración; frontend, 39/39; lint, typecheck y build de producción correctos; OpenAPI parseado con 33 paths, 39 operaciones e IDs únicos. La prueba de invitación verifica autorización, reenvío/revocación, hash y expiración del token, consumo único, sesión de paciente y auditoría. La entrega real de Resend, revisión/aprobación del proceso de verificación de identidad, aplicación de 005 en entornos destino y ejecución del bootstrap inicial siguen pendientes.
 
 ### Fase 5 — Perfil, DNI y coberturas (P1/P2)
 
@@ -232,7 +241,7 @@ Cada operación debe documentar DTO estricto, errores `401/403/409/422`, CSRF, i
 
 Las decisiones de flujo y producto de la Fase 0 se confirmaron el 27/10/2026 y están incorporadas en la sección 7. Antes de habilitar el flujo en producción se deben cerrar los prerrequisitos indicados allí: proveedor de email, recuperación/MFA administrativa, revisión operativa/legal y autorización de publicación del directorio/disponibilidad.
 
-La salida y evidencia de Fase 1 están documentadas en `docs/fase-1-contrato-y-modelo-registro-turnos.md`; se verificó en solo lectura el esquema objetivo y se revisaron contrato, seguridad de diseño, migraciones y compatibilidad backend/frontend. La fase queda cerrada como diseño. Las rutas todavía deben implementarse en Fase 2 y siguientes. Los gates operativos de email, recuperación/MFA administrativa, privacidad y autorización de publicación siguen vigentes; no habilitar registro en producción ni crear administradores mediante UI mientras correspondan.
+La salida y evidencia de Fase 1 están documentadas en `docs/fase-1-contrato-y-modelo-registro-turnos.md`. La fase queda cerrada como diseño y preparación de migración, no como despliegue de esquema ni implementación de rutas. Antes de habilitar escrituras de registro en cada entorno, repetir el preflight y aplicar la migración privada aprobada. Los gates operativos de email, recuperación/MFA administrativa, privacidad y autorización de publicación siguen vigentes; no habilitar registro en producción ni crear administradores mediante UI mientras correspondan.
 
 ## 11. Referencias internas
 

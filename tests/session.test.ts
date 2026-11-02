@@ -4,6 +4,8 @@ import {
   getSignInErrorMessage,
   getCurrentUser,
   getRoleLabel,
+  registrationContinuationPath,
+  registerPatientAccount,
   safeInternalPath,
   signIn,
   signOut,
@@ -63,6 +65,26 @@ describe("session API", () => {
     expect(fetchMock.mock.calls[1][1].credentials).toBe("include")
   })
 
+  it("preserves only the internal availability continuation in the registration request", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ csrfToken: "c".repeat(32) }))
+      .mockResolvedValueOnce(Response.json({ message: "accepted" }, { status: 202 }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(registerPatientAccount({
+      firstName: "Ana",
+      lastName: "Ejemplo",
+      nationalId: "12345678",
+      birthDate: "1990-01-01",
+      phone: "1155550101",
+      email: "ana@example.test",
+      password: "a-secure-synthetic-password",
+    }, "/appointments/availability?slotId=MTIz")).resolves.toEqual({ message: "accepted" })
+
+    expect(fetchMock.mock.calls[1][1].body).toContain('"continueTo":"/appointments/availability?slotId=MTIz"')
+  })
+
   it("obtains CSRF before logout and accepts the contract's empty 204 response", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:4000/api/v1")
     const fetchMock = vi.fn()
@@ -82,6 +104,14 @@ describe("session presentation helpers", () => {
     expect(safeInternalPath("/patients?search=Alex")).toBe("/patients?search=Alex")
     expect(safeInternalPath("//example.test")).toBe("/dashboard")
     expect(safeInternalPath("/\\example.test")).toBe("/dashboard")
+  })
+
+  it("only keeps public booking routes as registration continuations", () => {
+    expect(registrationContinuationPath("/appointments/availability?slotId=MTIz")).toBe(
+      "/appointments/availability?slotId=MTIz",
+    )
+    expect(registrationContinuationPath("/appointments/availability?reschedule=42")).toBeUndefined()
+    expect(registrationContinuationPath("/patients")).toBeUndefined()
   })
 
   it("uses readable labels for every contract role", () => {

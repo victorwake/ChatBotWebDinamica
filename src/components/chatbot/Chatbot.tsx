@@ -11,7 +11,7 @@ const dots = [0, 1, 2]
 const SUGGESTIONS = [
   { label: "Pacientes", text: "mostrame los pacientes" },
   { label: "Login", text: "login" },
-  { label: "Turno", text: "necesito un turno" },
+  { label: "Sacar turno", text: "quiero sacar un turno" },
   { label: "Atenciones", text: "atenciones clínicas" },
 ]
 

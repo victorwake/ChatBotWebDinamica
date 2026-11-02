@@ -550,7 +550,6 @@ async function loadAppointmentForUpdate(
 
 router.get(
   "/availability",
-  requireAuthentication,
   asyncRoute(async (req, res) => {
     const parsed = filtersSchema.safeParse(req.query)
     if (!parsed.success) {
@@ -676,19 +675,29 @@ router.post(
     }
 
     const result = await withTransaction(async (connection) => {
-      await connection.execute("SELECT id FROM medicos WHERE id = ? FOR UPDATE", [slot.doctorId])
       const [patientRows] = await connection.execute<Array<RowDataPacket & { id: number }>>(
         `SELECT pa.id
          FROM pacientes pa
          INNER JOIN personas p ON p.id = pa.persona_id
          WHERE pa.id = ? AND pa.activo = TRUE AND p.activo = TRUE
-         LIMIT 1`,
+         LIMIT 1 FOR UPDATE`,
         [patientId],
       )
       if (!patientRows[0]) return { kind: "patient-not-found" as const }
 
+      await connection.execute("SELECT id FROM medicos WHERE id = ? FOR UPDATE", [slot.doctorId])
       const doctorValid = await slotMatchesSchedule(connection, slot)
       if (!doctorValid) return { kind: "unavailable" as const }
+
+      const [patientOverlaps] = await connection.execute<Array<RowDataPacket & { id: number }>>(
+        `SELECT id FROM turnos
+         WHERE paciente_id = ?
+           AND estado IN ('pendiente', 'confirmado')
+           AND datetime_inicio < ? AND datetime_fin > ?
+         LIMIT 1 FOR UPDATE`,
+        [patientId, slot.endsAt, slot.startsAt],
+      )
+      if (patientOverlaps[0]) return { kind: "patient-overlap" as const }
 
       const [overlaps] = await connection.execute<Array<RowDataPacket & { id: number }>>(
         `SELECT id FROM turnos
@@ -747,6 +756,10 @@ router.post(
 
     if (result.kind === "patient-not-found") {
       sendHttpError(res, 404, "NOT_FOUND", "No se encontró el paciente solicitado.")
+      return
+    }
+    if (result.kind === "patient-overlap") {
+      sendHttpError(res, 409, "PATIENT_APPOINTMENT_OVERLAP", "El paciente ya tiene un turno pendiente o confirmado en ese horario.")
       return
     }
     if (result.kind === "unavailable") {
@@ -911,6 +924,12 @@ router.patch(
       return
     }
     const result = await withTransaction(async (connection) => {
+      const [patientLocks] = await connection.execute<Array<RowDataPacket & { id: number }>>(
+        "SELECT id FROM pacientes WHERE id = ? FOR UPDATE",
+        [original.patientId],
+      )
+      if (!patientLocks[0]) return { kind: "not-found" as const }
+
       const doctorIds = [...new Set([original.doctorId, slot.doctorId])].sort((a, b) => a - b)
       const [doctorLocks] = await connection.execute<Array<RowDataPacket & { id: number }>>(
         `SELECT id FROM medicos WHERE id IN (${doctorIds.map(() => "?").join(", ")}) ORDER BY id FOR UPDATE`,
@@ -935,6 +954,15 @@ router.patch(
         [slot.doctorId, Number(appointmentId), slot.endsAt, slot.startsAt],
       )
       if (overlaps[0]) return { kind: "unavailable" as const }
+      const [patientOverlaps] = await connection.execute<Array<RowDataPacket & { id: number }>>(
+        `SELECT id FROM turnos
+         WHERE paciente_id = ? AND id <> ?
+           AND estado IN ('pendiente', 'confirmado')
+           AND datetime_inicio < ? AND datetime_fin > ?
+         LIMIT 1 FOR UPDATE`,
+        [appointment.patientId, Number(appointmentId), slot.endsAt, slot.startsAt],
+      )
+      if (patientOverlaps[0]) return { kind: "patient-overlap" as const }
       await connection.execute(
         `UPDATE turnos
          SET medico_id = ?,
@@ -978,6 +1006,10 @@ router.patch(
     }
     if (result.kind === "unavailable") {
       sendHttpError(res, 409, "SLOT_UNAVAILABLE", "El horario ya no está disponible.")
+      return
+    }
+    if (result.kind === "patient-overlap") {
+      sendHttpError(res, 409, "PATIENT_APPOINTMENT_OVERLAP", "El paciente ya tiene un turno pendiente o confirmado en ese horario.")
       return
     }
     const appointment = await loadAppointment(appointmentId)

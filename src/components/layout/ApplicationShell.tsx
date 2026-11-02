@@ -8,7 +8,12 @@ import { useSession } from "@/contexts/SessionContext"
 import { getRoleLabel } from "@/lib/session"
 import LogoutButton from "@/components/auth/LogoutButton"
 
-const baseLinks = [{ href: "/", label: "Inicio" }]
+const baseLinks = [
+  { href: "/", label: "Inicio" },
+  { href: "/specialties", label: "Especialidades" },
+  { href: "/doctors", label: "Profesionales" },
+  { href: "/appointments/availability", label: "Buscar turnos" },
+]
 
 export default function ApplicationShell({
   children,
@@ -23,8 +28,6 @@ export default function ApplicationShell({
     ...(user
       ? [
           { href: "/dashboard", label: "Panel" },
-          { href: "/doctors", label: "Profesionales" },
-          { href: "/specialties", label: "Especialidades" },
           ...(user.roles.includes("administrative")
             ? [{ href: "/patients", label: "Pacientes" }]
             : []),

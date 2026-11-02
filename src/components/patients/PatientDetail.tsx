@@ -49,6 +49,7 @@ export default function PatientDetail({ patientId }: { patientId: string }) {
   const [editingCoverage, setEditingCoverage] = useState<PatientCoverage | null>(null)
   const canEditOwnProfile = user?.roles.includes("patient") && user.patientId === patientId
   const canManageCoverage = canEditOwnProfile || user?.roles.includes("administrative")
+  const canInvitePatient = user?.roles.some((role) => ["administrative", "administrator"].includes(role))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -126,6 +127,11 @@ export default function PatientDetail({ patientId }: { patientId: string }) {
               {canEditOwnProfile && (
                 <Link href={`/patients/${encodeURIComponent(patientId)}/medical-history`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-teal-800">
                   Historial clínico
+                </Link>
+              )}
+              {canInvitePatient && (
+                <Link href={`/patients/${encodeURIComponent(patientId)}/invite`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-teal-800">
+                  Invitar a activar cuenta
                 </Link>
               )}
               <Link href="/patients" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">

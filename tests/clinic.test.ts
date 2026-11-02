@@ -339,5 +339,9 @@ describe("clinic API contract", () => {
       new ApiError(409, "SLOT_UNAVAILABLE", "slot taken"),
       "No se pudo reservar.",
     )).toMatch(/horario ya no está disponible/i)
+    expect(getClinicErrorMessage(
+      new ApiError(409, "PATIENT_APPOINTMENT_OVERLAP", "patient has an overlapping appointment"),
+      "No se pudo reservar.",
+    )).toMatch(/turno pendiente o confirmado que se superpone/i)
   })
 })

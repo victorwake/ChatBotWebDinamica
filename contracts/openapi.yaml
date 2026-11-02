@@ -113,8 +113,10 @@ paths:
       operationId: login
       summary: Iniciar sesión
       description: |
-        Las cuentas del MVP son provisionadas por personal autorizado.
-        El auto-registro y la recuperación de contraseña quedan fuera del MVP.
+        Autentica una cuenta existente. El alta pública de pacientes se
+        especifica por separado en POST /auth/register y requiere verificación
+        del email antes de habilitar reservas. La recuperación de contraseña
+        queda fuera del MVP.
         En éxito, el servidor establece una cookie de sesión HttpOnly y devuelve
         el usuario autenticado. No devuelve el valor de la cookie en el JSON.
         El token CSRF preautenticación se invalida al iniciar sesión; el cliente
@@ -165,6 +167,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/InternalError"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -228,10 +232,15 @@ paths:
         respuesta es idéntica cuando los datos ya están registrados para evitar
         enumeración; en ese caso el sistema no modifica ni revela la cuenta
         existente. La cuenta no puede reservar turnos hasta verificar el email.
-        Requiere CSRF y está sujeta al límite de solicitudes; la implementación
-        debe además aplicar un límite específico de intentos. Reintentar una
-        solicitud no crea una segunda cuenta; solo puede haber un token de
-        verificación vigente por cuenta y la emisión de otro invalida el anterior.
+        El enlace lleva el token en el fragmento URL para que no viaje en
+        requests ni logs HTTP. Requiere CSRF, un límite específico de intentos y
+        el proveedor de email configurado; si el envío no está disponible
+        responde 503 sin habilitar la cuenta. Reintentar una solicitud no crea
+        una segunda cuenta; solo puede haber un token de verificación vigente
+        por cuenta y la emisión de otro invalida el anterior. El campo opcional
+        continueTo conserva la selección pública de disponibilidad y solo admite
+        la ruta interna /appointments/availability con filtros no sensibles;
+        la API vuelve a validar el horario antes de reservar.
       security:
         - csrfToken: []
       requestBody:
@@ -257,6 +266,8 @@ paths:
           $ref: "#/components/responses/UnprocessableEntity"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -296,6 +307,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -314,8 +327,9 @@ paths:
         tokens vigentes en paralelo: el nuevo token invalida al anterior.
         Para una ficha existente, el email debe coincidir con el contacto que
         ya consta en ella y el personal debe verificar por un proceso aprobado
-        la identidad del titular y su acceso a ese email; no se cambia el
-        contacto ni se crea otra cuenta si la ficha ya está vinculada.
+        la identidad del titular y su acceso a ese email, confirmándolo de
+        forma explícita y auditable; no se cambia el contacto ni se crea otra
+        cuenta si la ficha ya está vinculada.
         Se auditan actor, acción, referencia y fecha sin registrar tokens,
         credenciales ni datos clínicos.
       security:
@@ -348,6 +362,8 @@ paths:
           $ref: "#/components/responses/UnprocessableEntity"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -724,8 +740,9 @@ paths:
         el servidor valida duplicados usando la identidad normalizada antes de
         aplicar el cambio. La actualización y su evento de auditoría son
         atómicos. La auditoría conserva actor, paciente, fecha y motivo, pero
-        no copia credenciales, información clínica ni snapshots de datos
-        personales. Nunca se ofrece esta operación al titular ni al registro público.
+        no copia el DNI anterior/nuevo, credenciales, información clínica ni
+        snapshots de datos personales. Nunca se ofrece esta operación al
+        titular ni al registro público.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -788,7 +805,12 @@ paths:
       tags: [Patients]
       operationId: addPatientCoverage
       summary: Agregar cobertura al paciente
-      description: El paciente puede agregar una cobertura a su propio registro; el personal administrativo puede hacerlo para un paciente.
+      description: |
+        El paciente puede agregar una cobertura a su propio registro; el
+        personal administrativo puede hacerlo para un paciente. La operación
+        genera un evento de auditoría minimizado con actor, acción, paciente,
+        referencia de cobertura y fecha; nunca registra número de afiliado,
+        DNI del titular ni snapshots de datos personales o clínicos.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -838,7 +860,10 @@ paths:
         administrativo puede actualizar las que gestiona. La baja es lógica:
         active=false exige validUntil y primary=false. La fecha final no puede
         anteceder a validFrom. Nunca se elimina físicamente una cobertura ni
-        se modifica la referencia histórica de un turno.
+        se modifica la referencia histórica de un turno. La operación genera
+        un evento de auditoría minimizado con actor, acción, paciente,
+        referencia de cobertura y fecha; nunca registra número de afiliado,
+        DNI del titular ni snapshots de datos personales o clínicos.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -1076,6 +1101,8 @@ paths:
         El paciente reserva para sí mismo. Personal administrativo puede indicar
         patientId para reservar en nombre de un paciente. El servidor valida
         nuevamente la disponibilidad y devuelve conflicto si el espacio ya fue tomado.
+        No permite que un mismo paciente tenga turnos pendientes o confirmados con
+        intervalos superpuestos, aunque sean con profesionales distintos.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -1217,7 +1244,10 @@ paths:
       tags: [Appointments]
       operationId: rescheduleAppointment
       summary: Reprogramar un turno
-      description: El paciente solo puede reprogramar sus propios turnos solicitados o confirmados; personal administrativo puede reprogramar cualquier turno.
+      description: |
+        El paciente solo puede reprogramar sus propios turnos solicitados o confirmados;
+        personal administrativo puede reprogramar cualquier turno. No permite crear
+        intervalos superpuestos con otros turnos pendientes o confirmados del paciente.
       security:
         - sessionCookie: []
           csrfToken: []
@@ -1614,7 +1644,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
-      description: Conflicto de negocio, como un horario ya reservado.
+      description: Conflicto de negocio, como un horario reservado o un solapamiento con otro turno pendiente o confirmado del mismo paciente.
       content:
         application/json:
           schema:
@@ -1640,6 +1670,12 @@ components:
               requestId: req_demo_004
     TooManyRequests:
       description: Límite de solicitudes excedido.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Servicio requerido temporalmente no disponible.
       content:
         application/json:
           schema:
@@ -1699,6 +1735,11 @@ components:
           minLength: 12
           maxLength: 256
           writeOnly: true
+        continueTo:
+          type: string
+          maxLength: 800
+          pattern: "^/appointments/availability(?:\\?.*)?$"
+          description: Ruta interna de continuación con solo filtros de fecha/especialidad/profesional y slotId.
     EmailVerificationInput:
       type: object
       additionalProperties: false
@@ -1729,7 +1770,7 @@ components:
     ExistingPatientInvitationInput:
       type: object
       additionalProperties: false
-      required: [patientId, email]
+      required: [patientId, email, identityConfirmed]
       properties:
         patientId:
           type: string
@@ -1738,6 +1779,10 @@ components:
           type: string
           format: email
           maxLength: 254
+        identityConfirmed:
+          type: boolean
+          enum: [true]
+          description: Afirmación auditable de que el personal verificó la identidad del titular y su acceso al email mediante el proceso operativo aprobado.
     NewPatientInvitationInput:
       type: object
       additionalProperties: false

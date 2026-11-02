@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -26,6 +27,7 @@ type SessionContextValue = {
   error: unknown
   refresh: () => Promise<void>
   signIn: (email: string, password: string) => Promise<CurrentUser>
+  acceptAuthenticatedUser: (user: CurrentUser) => void
   signOut: () => Promise<void>
 }
 
@@ -35,15 +37,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [status, setStatus] = useState<SessionStatus>("loading")
   const [error, setError] = useState<unknown>(null)
+  const sessionGeneration = useRef(0)
 
   const loadSession = useCallback(async (signal?: AbortSignal) => {
+    const generation = ++sessionGeneration.current
     try {
       const currentUser = await getCurrentUser(signal)
+      if (signal?.aborted || generation !== sessionGeneration.current) return
       setUser(currentUser)
       setError(null)
       setStatus("authenticated")
     } catch (requestError) {
-      if (signal?.aborted) return
+      if (signal?.aborted || generation !== sessionGeneration.current) return
       setUser(null)
       if (isUnauthenticatedError(requestError)) {
         setStatus("unauthenticated")
@@ -78,6 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const expireSession = () => {
+      sessionGeneration.current += 1
       setUser(null)
       setError(null)
       setStatus("unauthenticated")
@@ -86,15 +92,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("clinic:session-expired", expireSession)
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const authenticatedUser = await authenticate(email, password)
+  const acceptAuthenticatedUser = useCallback((authenticatedUser: CurrentUser) => {
+    sessionGeneration.current += 1
     setUser(authenticatedUser)
     setError(null)
     setStatus("authenticated")
-    return authenticatedUser
   }, [])
 
+  const signIn = useCallback(async (email: string, password: string) => {
+    const authenticatedUser = await authenticate(email, password)
+    acceptAuthenticatedUser(authenticatedUser)
+    return authenticatedUser
+  }, [acceptAuthenticatedUser])
+
   const signOut = useCallback(async () => {
+    sessionGeneration.current += 1
     try {
       await endSession()
       setUser(null)
@@ -112,8 +124,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, status, error, refresh, signIn, signOut }),
-    [user, status, error, refresh, signIn, signOut],
+    () => ({ user, status, error, refresh, signIn, acceptAuthenticatedUser, signOut }),
+    [user, status, error, refresh, signIn, acceptAuthenticatedUser, signOut],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

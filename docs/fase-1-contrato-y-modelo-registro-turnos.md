@@ -9,6 +9,9 @@
 - Se definieron DTOs estrictos, respuestas genéricas contra enumeración, requisitos CSRF, estados HTTP y reglas de rol para las nuevas operaciones.
 - Se agregaron los tipos mantenidos por el cliente en `src/lib/session.ts` y `src/lib/clinic.ts`. No se agregaron llamadas a rutas todavía inexistentes.
 - Se verificó en modo solo lectura el esquema objetivo MySQL, el estado/checksum de las migraciones y conteos agregados de colisiones/referencias. No se leyeron registros ni valores de identidad, salud o credenciales.
+- Se preparó la migración privada `server/migrations/003_normalized_identity_indexes.sql` con índices únicos funcionales para DNI y email normalizados. Antes de aplicarla en cada entorno se debe pasar el preflight.
+- Se definió la política mínima de auditoría para correcciones de identidad, invitaciones, cambios de cuenta y cobertura, alineada con el contrato OpenAPI.
+- **Actualización 02/11/2026:** se aplicaron en la base local MySQL 8.4.10 las migraciones privadas 003 (índices únicos normalizados) y 004 (tokens de verificación). El preflight previo dio cero colisiones de DNI/email y cero DNI normalizados fuera de longitud. No se modificaron valores de identidad. Las demás bases requieren repetir el preflight y aplicar las migraciones por su canal privado.
 
 ## Decisiones de contrato
 
@@ -20,6 +23,7 @@
 6. La baja de cobertura es lógica (`active=false`), exige fecha final y elimina principalidad. No existe baja física; la referencia de turnos debe mantenerse.
 7. El catálogo profesional y la disponibilidad son públicos, de solo lectura y rate-limited. La publicación efectiva sigue condicionada a la autorización operativa registrada en Fase 0.
 8. Reintentos de registro/invitación no duplican cuentas ni fichas; cada cuenta o ficha mantiene como máximo un token vigente y un token reemitido invalida el anterior.
+9. Toda operación sensible genera un evento atómico y minimizado. Correcciones de identidad guardan actor, paciente, acción, fecha y motivo, pero no el DNI anterior/nuevo. Cambios de cuenta guardan actor, cuenta, acción, fecha y solo los estados/roles necesarios. Invitaciones guardan actor, paciente, acción y fecha, nunca email destinatario ni token. Cambios de cobertura guardan actor, paciente, referencia de cobertura, acción y fecha, nunca número de afiliado, DNI del titular ni snapshots.
 
 ## Evidencia del esquema local privado
 
@@ -48,14 +52,49 @@ Esta comprobación verifica el esquema del entorno configurado, no todos los ent
 
 ## Propuesta mínima de persistencia
 
-La siguiente propuesta guía una futura migración **privada**; no se incluye SQL ejecutable en Git:
+La migración `server/migrations/003_normalized_identity_indexes.sql` contiene únicamente los índices de identidad normalizada y permanece excluida de Git conforme a la política del proyecto. Antes de aplicarla en cada entorno:
 
-1. Canonicalizar DNI en servidor (solo dígitos, conservando ceros iniciales) y respaldar la unicidad con una columna generada/índice único compatible con MySQL 8.4. Detectar colisiones en cada entorno y resolverlas manualmente antes de aplicar la restricción.
-2. Canonicalizar email de cuenta con `LOWER(TRIM(email))` y unicidad en la cuenta. El email de contacto de una persona no es prueba de identidad ni debe asociarse automáticamente a una cuenta. El preflight de la base revisada no encontró colisiones normalizadas.
-3. Reutilizar la relación existente persona–paciente–usuario y la tabla de roles. Crear persona, paciente, usuario, asociación al rol `patient` y token en una sola transacción; guardar solo el hash de la contraseña y el hash del token.
-4. Añadir almacenamiento de tokens de verificación/invitación con propósito, referencia a paciente/cuenta, email destinatario, hash SHA-256 único, expiración, consumo/revocación y actor emisor. Limitar a un token vigente por titular mediante bloqueo transaccional, revocar el anterior al reemitir y nunca guardar el token en claro.
-5. Añadir auditoría específica mínima para corrección de identidad: actor, paciente, tipo de acción, fecha y motivo. No copiar los DNI anterior/nuevo, credenciales ni datos clínicos en snapshots o logs generales.
-6. La FK observada permite `ON DELETE SET NULL`; por lo tanto, mantener la baja lógica y no exponer borrado físico. Si se decide endurecer la FK a `RESTRICT`, hacerlo en migración privada solo tras validar compatibilidad en cada entorno. Ninguna actualización puede reescribir la cobertura histórica de un turno.
+1. Comprobar respaldo, historial/checksum de migraciones y que el esquema objetivo coincide con las migraciones aplicadas.
+2. Ejecutar el preflight agregado de solo lectura. Devuelve conteos, nunca valores de identidad:
+
+   ```sql
+   SELECT COUNT(*) AS collision_groups
+   FROM (
+     SELECT REGEXP_REPLACE(dni, '[^0-9]', '') AS normalized_dni
+     FROM personas
+     GROUP BY normalized_dni
+     HAVING COUNT(*) > 1
+   ) AS duplicates;
+
+   SELECT COUNT(*) AS invalid_dni_count
+   FROM personas
+   WHERE CHAR_LENGTH(REGEXP_REPLACE(dni, '[^0-9]', '')) NOT BETWEEN 5 AND 20;
+
+   SELECT COUNT(*) AS collision_groups
+   FROM (
+     SELECT LOWER(TRIM(email)) AS normalized_email
+     FROM users
+     GROUP BY normalized_email
+     HAVING COUNT(*) > 1
+   ) AS duplicates;
+   ```
+
+   Si aparece cualquier colisión o identificador inválido, detenerse y resolverlo manualmente, sin auto-fusión.
+3. Aplicar la migración solo después de obtener cero colisiones e inválidos y verificar que ambos índices únicos quedaron creados. La migración no hace backfill ni modifica valores de DNI/email.
+4. En Fase 2, normalizar DNI y email en el servidor antes de persistirlos; el índice protege también escrituras concurrentes y otros clientes.
+
+El email de contacto de una persona no es prueba de identidad ni debe asociarse automáticamente a una cuenta. Los cambios de identidad/cuenta/cobertura deben escribir los eventos de auditoría mínimos descritos arriba en la misma transacción que la operación. La FK observada permite `ON DELETE SET NULL`; por lo tanto, mantener la baja lógica y no exponer borrado físico. Ninguna actualización puede reescribir la cobertura histórica de un turno.
+
+### Política de auditoría
+
+| Operación | Campos permitidos en el evento | Datos que no se registran |
+|---|---|---|
+| Corrección de DNI | actor, paciente, acción, fecha y motivo administrativo | DNI anterior/nuevo, contraseña, datos clínicos, snapshots |
+| Alta/aceptación/reemisión de invitación | actor (si corresponde), paciente/cuenta, acción y fecha | token, hash del token, email destinatario, contraseña |
+| Cambio de rol/estado | actor, cuenta, acción, fecha y roles/estado anterior y nuevo | email, contraseña, datos clínicos, snapshots completos |
+| Alta/cambio/baja lógica de cobertura | actor, paciente, referencia de cobertura, acción y fecha | número de afiliado, DNI del titular, snapshots, datos clínicos |
+
+Los eventos se escriben en la misma transacción que la operación. El endpoint de auditoría no debe exponer el motivo de corrección ni los valores de identidad; el acceso y la retención siguen sujetos a la política operativa.
 
 ## Procedimiento de migración y rollback
 
@@ -70,10 +109,11 @@ La siguiente propuesta guía una futura migración **privada**; no se incluye SQ
 
 - **Contrato:** YAML parseable, 33 rutas, operationIds únicos, referencias internas resueltas; esquemas cerrados y errores documentados. Pasó revisión.
 - **Seguridad:** registro genérico `202`, sin roles/IDs elegibles por cliente, CSRF, rate limit, tokens opacos de un solo uso almacenados como hash y sin secretos en respuestas/logs; corrección de DNI administrativa con motivo/auditoría; catálogos públicos minimizados y solo lectura; catálogo de coberturas conserva sesión. Pasó revisión de diseño.
-- **Persistencia/migraciones:** historial de las dos migraciones coincide con checksums y esquema relevante; preflight agregado sin colisiones ni referencias huérfanas. No se ejecutó DDL.
+- **Persistencia/migraciones:** historial de las dos migraciones existentes coincide con checksums y esquema relevante; el preflight del entorno revisado no encontró colisiones normalizadas ni referencias huérfanas. Se preparó la migración privada `003_normalized_identity_indexes.sql`, sin aplicarla. Cada entorno requiere repetir preflight, obtener cero colisiones e inválidos, y aplicar/validar sus índices antes de habilitar escrituras de registro.
+- **Auditoría:** quedan definidos los eventos mínimos de identidad, invitación, cuenta y cobertura, sus límites de contenido y la atomicidad. No se agregan DNI anterior/nuevo, email destinatario, tokens, números de afiliado ni snapshots a la auditoría.
 - **Compatibilidad:** cliente limitado a tipos, sin invocar rutas que todavía no existen. Se registraron las brechas actuales del servidor para que sean resueltas en sus fases.
 
-La Fase 1 queda cerrada. Lo siguiente es implementar las rutas y controles en Fase 2/3, no activar el contrato aún.
+La Fase 1 queda cerrada como contrato, modelo objetivo y preparación de migración. No se ejecutó DDL ni se implementaron rutas nuevas. Se puede comenzar Fase 2; antes de habilitar registro/escrituras en cualquier entorno se debe completar allí el gate de preflight y aplicación de la migración. No activar el contrato mientras falten los controles de Fase 2/3.
 
 ## Gates que siguen pendientes para fases posteriores y producción
 

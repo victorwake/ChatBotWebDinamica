@@ -6,5 +6,8 @@ export default async function DoctorsPage({
   searchParams: Promise<{ specialtyId?: string | string[] }>
 }) {
   const { specialtyId } = await searchParams
-  return <DoctorDirectory initialSpecialtyId={typeof specialtyId === "string" ? specialtyId : undefined} />
+  const validatedSpecialtyId = typeof specialtyId === "string" && /^\d+$/.test(specialtyId)
+    ? specialtyId
+    : undefined
+  return <DoctorDirectory initialSpecialtyId={validatedSpecialtyId} />
 }

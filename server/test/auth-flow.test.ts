@@ -20,7 +20,7 @@ test("patient login creates a cookie session, exposes current user and logout re
   const suffix = randomUUID().replaceAll("-", "")
   const email = `auth-test-${suffix}@example.invalid`
   const password = `Phase2-${randomUUID()}`
-  const dni = String(Date.now()).slice(-8) + suffix.slice(0, 4)
+  const dni = `${Date.now()}${Math.floor(Math.random() * 10_000).toString().padStart(4, "0")}`
   let personaId: number | undefined
   let userId: number | undefined
   let preAuthToken: string | undefined
@@ -78,7 +78,7 @@ test("patient login creates a cookie session, exposes current user and logout re
       for (const [index, role] of staffRoles.entries()) {
         const staffEmail = `auth-test-${role.expectedRole}-${suffix}@example.invalid`
         const staffPassword = `Phase2-${role.expectedRole}-${randomUUID()}`
-        const staffDni = `${dni.slice(0, 8)}${index + 1}`
+        const staffDni = `${dni.slice(0, 15)}${index + 1}`
         const [staffRolesRows] = await connection.execute<Array<RowDataPacket & { id: number }>>(
           "SELECT id FROM roles WHERE nombre = ? LIMIT 1",
           [role.roleName],

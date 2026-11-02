@@ -3,7 +3,6 @@ import type { RowDataPacket } from "mysql2/promise"
 import { z } from "zod"
 import { asyncRoute } from "../auth/async-route"
 import { sendHttpError } from "../auth/http-error"
-import { requireAuthentication } from "../middleware/authentication"
 import { pool } from "../db/pool"
 
 const router = Router()
@@ -23,7 +22,6 @@ type DoctorRow = RowDataPacket & {
 
 router.get(
   "/specialties",
-  requireAuthentication,
   asyncRoute(async (_req, res) => {
     const [rows] = await pool.execute<SpecialtyRow[]>(
       `SELECT id, nombre AS name
@@ -37,7 +35,6 @@ router.get(
 
 router.get(
   "/doctors",
-  requireAuthentication,
   asyncRoute(async (req, res) => {
     const parsed = z.object({
       specialtyId: z.string().regex(/^\d+$/).optional(),

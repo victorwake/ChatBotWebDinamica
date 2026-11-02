@@ -2,13 +2,35 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { closeServer, createPhase3Fixture } from "./phase3-fixtures"
 
-test("phase 3 reference data exposes only active specialties and professionals", async () => {
+test("public reference data exposes only active specialties and professionals", async () => {
   const fixture = await createPhase3Fixture()
   const { server, baseUrl } = await fixture.startServer()
 
   try {
     const anonymousResponse = await fetch(`${baseUrl}/api/v1/specialties`)
-    assert.equal(anonymousResponse.status, 401)
+    assert.equal(anonymousResponse.status, 200)
+    const anonymousSpecialties = await anonymousResponse.json() as Array<{ id: string; name: string }>
+    assert.ok(anonymousSpecialties.some((specialty) =>
+      specialty.id === String(fixture.specialtyId)
+      && specialty.name === `Neurología Fase 3 ${fixture.suffix.slice(0, 12)}`,
+    ))
+
+    const anonymousDoctorsResponse = await fetch(
+      `${baseUrl}/api/v1/doctors?specialtyId=${fixture.specialtyId}`,
+    )
+    assert.equal(anonymousDoctorsResponse.status, 200)
+    const anonymousDoctors = await anonymousDoctorsResponse.json() as Array<{
+      id: string
+      displayName: string
+      specialty: { id: string; name: string }
+    }>
+    assert.ok(anonymousDoctors.some((doctor) =>
+      doctor.id === String(fixture.doctorId)
+      && doctor.displayName === "Lucía Benítez"
+      && doctor.specialty.name === `Neurología Fase 3 ${fixture.suffix.slice(0, 12)}`
+      && !("email" in doctor)
+      && !("phone" in doctor),
+    ))
 
     const patientSession = await fixture.login(fixture.patient, baseUrl)
     const specialtiesResponse = await fetch(`${baseUrl}/api/v1/specialties`, {

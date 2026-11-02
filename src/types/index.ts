@@ -5,5 +5,5 @@ export type Message = {
 }
 
 export type Action = {
-  href: "/" | "/login" | "/patients" | "/appointments" | "/consultations"
+  href: "/" | "/login" | "/patients" | "/appointments" | "/appointments/availability" | "/consultations"
 }

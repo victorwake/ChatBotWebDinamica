@@ -11,6 +11,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "migrate:prod": "node --env-file=.env dist/src/db/migrate.js",
     "migrate:baseline": "tsx src/db/baseline.ts",
+    "bootstrap:administrator": "node --env-file=.env dist/src/db/bootstrap-administrator.js",
     "test": "npm run build && node --test --test-concurrency=1 dist/test/*.test.js"
   },
   "dependencies": {
